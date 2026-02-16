@@ -1,0 +1,12 @@
+target/
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+.factorypath
+build/
+*.swp
+*.log
+.DS_Store
+.env
