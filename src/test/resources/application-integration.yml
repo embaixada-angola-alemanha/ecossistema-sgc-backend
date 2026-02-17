@@ -25,3 +25,5 @@ ecossistema:
     enabled: true
   security:
     enabled: false
+    rate-limit:
+      enabled: false

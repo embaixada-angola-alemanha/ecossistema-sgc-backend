@@ -12,10 +12,10 @@ public record VisaCreateRequest(
         @NotNull UUID cidadaoId,
         @NotNull TipoVisto tipo,
         @Size(max = 100) String nacionalidadePassaporte,
-        String motivoViagem,
+        @Size(max = 500) String motivoViagem,
         @Future LocalDate dataEntrada,
         @Future LocalDate dataSaida,
-        String localAlojamento,
+        @Size(max = 500) String localAlojamento,
         @Size(max = 255) String entidadeConvite,
-        String observacoes
+        @Size(max = 2000) String observacoes
 ) {}
