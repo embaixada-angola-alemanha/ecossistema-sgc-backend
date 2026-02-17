@@ -1,41 +1,23 @@
 package ao.gov.embaixada.sgc.statemachine;
 
 import ao.gov.embaixada.sgc.enums.EstadoProcesso;
-import ao.gov.embaixada.sgc.exception.InvalidStateTransitionException;
 import org.springframework.stereotype.Component;
 
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Set;
-
 @Component
-public class ProcessoStateMachine {
-
-    private final Map<EstadoProcesso, Set<EstadoProcesso>> transitions = new EnumMap<>(EstadoProcesso.class);
+public class ProcessoStateMachine extends WorkflowStateMachine<EstadoProcesso> {
 
     public ProcessoStateMachine() {
-        transitions.put(EstadoProcesso.RASCUNHO, Set.of(
-                EstadoProcesso.SUBMETIDO, EstadoProcesso.CANCELADO));
-        transitions.put(EstadoProcesso.SUBMETIDO, Set.of(
-                EstadoProcesso.EM_ANALISE, EstadoProcesso.CANCELADO));
-        transitions.put(EstadoProcesso.EM_ANALISE, Set.of(
-                EstadoProcesso.APROVADO, EstadoProcesso.REJEITADO, EstadoProcesso.CANCELADO));
-        transitions.put(EstadoProcesso.APROVADO, Set.of(
-                EstadoProcesso.CONCLUIDO, EstadoProcesso.CANCELADO));
-        transitions.put(EstadoProcesso.REJEITADO, Set.of(
-                EstadoProcesso.RASCUNHO, EstadoProcesso.CANCELADO));
-        transitions.put(EstadoProcesso.CONCLUIDO, Set.of());
-        transitions.put(EstadoProcesso.CANCELADO, Set.of());
+        super("Processo", EstadoProcesso.class);
     }
 
-    public boolean isTransitionAllowed(EstadoProcesso from, EstadoProcesso to) {
-        Set<EstadoProcesso> allowed = transitions.get(from);
-        return allowed != null && allowed.contains(to);
-    }
-
-    public void validateTransition(EstadoProcesso from, EstadoProcesso to) {
-        if (!isTransitionAllowed(from, to)) {
-            throw new InvalidStateTransitionException("Processo", from.name(), to.name());
-        }
+    @Override
+    protected void configureTransitions() {
+        addTransition(EstadoProcesso.RASCUNHO, EstadoProcesso.SUBMETIDO, EstadoProcesso.CANCELADO);
+        addTransition(EstadoProcesso.SUBMETIDO, EstadoProcesso.EM_ANALISE, EstadoProcesso.CANCELADO);
+        addTransition(EstadoProcesso.EM_ANALISE, EstadoProcesso.APROVADO, EstadoProcesso.REJEITADO, EstadoProcesso.CANCELADO);
+        addTransition(EstadoProcesso.APROVADO, EstadoProcesso.CONCLUIDO, EstadoProcesso.CANCELADO);
+        addTransition(EstadoProcesso.REJEITADO, EstadoProcesso.RASCUNHO, EstadoProcesso.CANCELADO);
+        addTerminalState(EstadoProcesso.CONCLUIDO);
+        addTerminalState(EstadoProcesso.CANCELADO);
     }
 }

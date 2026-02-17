@@ -13,6 +13,8 @@ import ao.gov.embaixada.sgc.repository.DocumentoRepository;
 import ao.gov.embaixada.sgc.repository.VisaHistoricoRepository;
 import ao.gov.embaixada.sgc.repository.VisaRepository;
 import ao.gov.embaixada.sgc.statemachine.VisaStateMachine;
+import ao.gov.embaixada.sgc.statemachine.event.WorkflowTransitionEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class VisaService {
     private final VisaMapper visaMapper;
     private final VisaStateMachine stateMachine;
     private final VisaFeeCalculator feeCalculator;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final AtomicLong visaCounter = new AtomicLong(System.currentTimeMillis() % 100000);
 
@@ -42,7 +45,8 @@ public class VisaService {
                        VisaHistoricoRepository historicoRepository,
                        VisaMapper visaMapper,
                        VisaStateMachine stateMachine,
-                       VisaFeeCalculator feeCalculator) {
+                       VisaFeeCalculator feeCalculator,
+                       ApplicationEventPublisher eventPublisher) {
         this.visaRepository = visaRepository;
         this.cidadaoRepository = cidadaoRepository;
         this.documentoRepository = documentoRepository;
@@ -50,6 +54,7 @@ public class VisaService {
         this.visaMapper = visaMapper;
         this.stateMachine = stateMachine;
         this.feeCalculator = feeCalculator;
+        this.eventPublisher = eventPublisher;
     }
 
     public VisaResponse create(VisaCreateRequest request) {
@@ -128,6 +133,10 @@ public class VisaService {
         visa = visaRepository.save(visa);
 
         addHistorico(visa, estadoAnterior, novoEstado, comentario);
+
+        eventPublisher.publishEvent(new WorkflowTransitionEvent(
+                this, visa.getId(), "Visa",
+                estadoAnterior.name(), novoEstado.name(), comentario));
 
         return visaMapper.toResponse(visa);
     }

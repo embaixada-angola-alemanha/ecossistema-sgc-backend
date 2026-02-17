@@ -59,15 +59,15 @@ class AgendamentoStateMachineTest {
 
     @Test
     void terminalStatesAreTerminal() {
-        assertTrue(stateMachine.isTerminal(EstadoAgendamento.CANCELADO));
-        assertTrue(stateMachine.isTerminal(EstadoAgendamento.COMPLETADO));
-        assertTrue(stateMachine.isTerminal(EstadoAgendamento.NAO_COMPARECEU));
+        assertTrue(stateMachine.isTerminalState(EstadoAgendamento.CANCELADO));
+        assertTrue(stateMachine.isTerminalState(EstadoAgendamento.COMPLETADO));
+        assertTrue(stateMachine.isTerminalState(EstadoAgendamento.NAO_COMPARECEU));
     }
 
     @Test
     void nonTerminalStatesAreNotTerminal() {
-        assertFalse(stateMachine.isTerminal(EstadoAgendamento.PENDENTE));
-        assertFalse(stateMachine.isTerminal(EstadoAgendamento.CONFIRMADO));
-        assertFalse(stateMachine.isTerminal(EstadoAgendamento.REAGENDADO));
+        assertFalse(stateMachine.isTerminalState(EstadoAgendamento.PENDENTE));
+        assertFalse(stateMachine.isTerminalState(EstadoAgendamento.CONFIRMADO));
+        assertFalse(stateMachine.isTerminalState(EstadoAgendamento.REAGENDADO));
     }
 }

@@ -14,6 +14,8 @@ import ao.gov.embaixada.sgc.repository.DocumentoRepository;
 import ao.gov.embaixada.sgc.repository.ProcessoHistoricoRepository;
 import ao.gov.embaixada.sgc.repository.ProcessoRepository;
 import ao.gov.embaixada.sgc.statemachine.ProcessoStateMachine;
+import ao.gov.embaixada.sgc.statemachine.event.WorkflowTransitionEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class ProcessoService {
     private final ProcessoHistoricoRepository historicoRepository;
     private final ProcessoMapper processoMapper;
     private final ProcessoStateMachine stateMachine;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final AtomicLong processoCounter = new AtomicLong(System.currentTimeMillis() % 100000);
 
@@ -41,13 +44,15 @@ public class ProcessoService {
                            DocumentoRepository documentoRepository,
                            ProcessoHistoricoRepository historicoRepository,
                            ProcessoMapper processoMapper,
-                           ProcessoStateMachine stateMachine) {
+                           ProcessoStateMachine stateMachine,
+                           ApplicationEventPublisher eventPublisher) {
         this.processoRepository = processoRepository;
         this.cidadaoRepository = cidadaoRepository;
         this.documentoRepository = documentoRepository;
         this.historicoRepository = historicoRepository;
         this.processoMapper = processoMapper;
         this.stateMachine = stateMachine;
+        this.eventPublisher = eventPublisher;
     }
 
     public ProcessoResponse create(ProcessoCreateRequest request) {
@@ -128,6 +133,10 @@ public class ProcessoService {
         processo = processoRepository.save(processo);
 
         addHistorico(processo, estadoAnterior, novoEstado, comentario);
+
+        eventPublisher.publishEvent(new WorkflowTransitionEvent(
+                this, processo.getId(), "Processo",
+                estadoAnterior.name(), novoEstado.name(), comentario));
 
         return processoMapper.toResponse(processo);
     }

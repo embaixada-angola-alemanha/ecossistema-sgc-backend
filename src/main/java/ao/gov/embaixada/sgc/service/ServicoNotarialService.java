@@ -14,6 +14,8 @@ import ao.gov.embaixada.sgc.repository.DocumentoRepository;
 import ao.gov.embaixada.sgc.repository.ServicoNotarialHistoricoRepository;
 import ao.gov.embaixada.sgc.repository.ServicoNotarialRepository;
 import ao.gov.embaixada.sgc.statemachine.ServicoNotarialStateMachine;
+import ao.gov.embaixada.sgc.statemachine.event.WorkflowTransitionEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,7 @@ public class ServicoNotarialService {
     private final ServicoNotarialStateMachine stateMachine;
     private final NotarialFeeCalculator feeCalculator;
     private final CertificadoService certificadoService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final AtomicLong servicoCounter = new AtomicLong(System.currentTimeMillis() % 100000);
 
@@ -45,7 +48,8 @@ public class ServicoNotarialService {
                                   ServicoNotarialMapper mapper,
                                   ServicoNotarialStateMachine stateMachine,
                                   NotarialFeeCalculator feeCalculator,
-                                  CertificadoService certificadoService) {
+                                  CertificadoService certificadoService,
+                                  ApplicationEventPublisher eventPublisher) {
         this.servicoRepository = servicoRepository;
         this.cidadaoRepository = cidadaoRepository;
         this.documentoRepository = documentoRepository;
@@ -54,6 +58,7 @@ public class ServicoNotarialService {
         this.stateMachine = stateMachine;
         this.feeCalculator = feeCalculator;
         this.certificadoService = certificadoService;
+        this.eventPublisher = eventPublisher;
     }
 
     public ServicoNotarialResponse create(ServicoNotarialCreateRequest request) {
@@ -138,6 +143,10 @@ public class ServicoNotarialService {
         servico = servicoRepository.save(servico);
 
         addHistorico(servico, estadoAnterior, novoEstado, comentario);
+
+        eventPublisher.publishEvent(new WorkflowTransitionEvent(
+                this, servico.getId(), "ServicoNotarial",
+                estadoAnterior.name(), novoEstado.name(), comentario));
 
         return mapper.toResponse(servico);
     }

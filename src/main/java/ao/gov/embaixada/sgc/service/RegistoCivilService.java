@@ -14,6 +14,8 @@ import ao.gov.embaixada.sgc.repository.DocumentoRepository;
 import ao.gov.embaixada.sgc.repository.RegistoCivilHistoricoRepository;
 import ao.gov.embaixada.sgc.repository.RegistoCivilRepository;
 import ao.gov.embaixada.sgc.statemachine.RegistoCivilStateMachine;
+import ao.gov.embaixada.sgc.statemachine.event.WorkflowTransitionEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class RegistoCivilService {
     private final RegistoCivilMapper mapper;
     private final RegistoCivilStateMachine stateMachine;
     private final CertificadoService certificadoService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final AtomicLong registoCounter = new AtomicLong(System.currentTimeMillis() % 100000);
 
@@ -43,7 +46,8 @@ public class RegistoCivilService {
                                RegistoCivilHistoricoRepository historicoRepository,
                                RegistoCivilMapper mapper,
                                RegistoCivilStateMachine stateMachine,
-                               CertificadoService certificadoService) {
+                               CertificadoService certificadoService,
+                               ApplicationEventPublisher eventPublisher) {
         this.registoRepository = registoRepository;
         this.cidadaoRepository = cidadaoRepository;
         this.documentoRepository = documentoRepository;
@@ -51,6 +55,7 @@ public class RegistoCivilService {
         this.mapper = mapper;
         this.stateMachine = stateMachine;
         this.certificadoService = certificadoService;
+        this.eventPublisher = eventPublisher;
     }
 
     public RegistoCivilResponse create(RegistoCivilCreateRequest request) {
@@ -135,6 +140,10 @@ public class RegistoCivilService {
         registo = registoRepository.save(registo);
 
         addHistorico(registo, estadoAnterior, novoEstado, comentario);
+
+        eventPublisher.publishEvent(new WorkflowTransitionEvent(
+                this, registo.getId(), "RegistoCivil",
+                estadoAnterior.name(), novoEstado.name(), comentario));
 
         return mapper.toResponse(registo);
     }

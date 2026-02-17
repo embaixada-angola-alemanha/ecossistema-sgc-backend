@@ -13,8 +13,10 @@ import ao.gov.embaixada.sgc.repository.AgendamentoHistoricoRepository;
 import ao.gov.embaixada.sgc.repository.AgendamentoRepository;
 import ao.gov.embaixada.sgc.repository.CidadaoRepository;
 import ao.gov.embaixada.sgc.statemachine.AgendamentoStateMachine;
+import ao.gov.embaixada.sgc.statemachine.event.WorkflowTransitionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
@@ -42,6 +44,7 @@ public class AgendamentoService {
     private final AgendamentoStateMachine stateMachine;
     private final AgendamentoSlotConfig slotConfig;
     private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final AtomicLong agendamentoCounter = new AtomicLong(System.currentTimeMillis() % 100000);
 
@@ -51,7 +54,8 @@ public class AgendamentoService {
                               AgendamentoMapper agendamentoMapper,
                               AgendamentoStateMachine stateMachine,
                               AgendamentoSlotConfig slotConfig,
-                              @Nullable NotificationService notificationService) {
+                              @Nullable NotificationService notificationService,
+                              ApplicationEventPublisher eventPublisher) {
         this.agendamentoRepository = agendamentoRepository;
         this.historicoRepository = historicoRepository;
         this.cidadaoRepository = cidadaoRepository;
@@ -59,6 +63,7 @@ public class AgendamentoService {
         this.stateMachine = stateMachine;
         this.slotConfig = slotConfig;
         this.notificationService = notificationService;
+        this.eventPublisher = eventPublisher;
     }
 
     public AgendamentoResponse create(AgendamentoCreateRequest request) {
@@ -143,6 +148,11 @@ public class AgendamentoService {
         addHistorico(agendamento, estadoAnterior, EstadoAgendamento.REAGENDADO,
                 "Reagendado para " + request.dataHora().format(DATE_FMT));
 
+        eventPublisher.publishEvent(new WorkflowTransitionEvent(
+                this, agendamento.getId(), "Agendamento",
+                estadoAnterior.name(), EstadoAgendamento.REAGENDADO.name(),
+                "Reagendado para " + request.dataHora().format(DATE_FMT)));
+
         sendNotification(agendamento.getCidadao(), "Agendamento Reagendado", "agendamento-reagendado",
                 Map.of("numero", agendamento.getNumeroAgendamento(),
                         "novaDataHora", agendamento.getDataHora().format(DATE_FMT)));
@@ -167,6 +177,10 @@ public class AgendamentoService {
 
         addHistorico(agendamento, estadoAnterior, novoEstado, comentario);
 
+        eventPublisher.publishEvent(new WorkflowTransitionEvent(
+                this, agendamento.getId(), "Agendamento",
+                estadoAnterior.name(), novoEstado.name(), comentario));
+
         if (novoEstado == EstadoAgendamento.CONFIRMADO) {
             sendNotification(agendamento.getCidadao(), "Agendamento Confirmado", "agendamento-confirmado",
                     Map.of("numero", agendamento.getNumeroAgendamento(),
@@ -186,12 +200,17 @@ public class AgendamentoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento", id));
 
         EstadoAgendamento estadoAnterior = agendamento.getEstado();
-        if (!stateMachine.isTerminal(estadoAnterior)) {
+        if (!stateMachine.isTerminalState(estadoAnterior)) {
             stateMachine.validateTransition(estadoAnterior, EstadoAgendamento.CANCELADO);
             agendamento.setEstado(EstadoAgendamento.CANCELADO);
             agendamento.setMotivoCancelamento("Cancelado pelo sistema");
             agendamentoRepository.save(agendamento);
             addHistorico(agendamento, estadoAnterior, EstadoAgendamento.CANCELADO, "Cancelado pelo sistema");
+
+            eventPublisher.publishEvent(new WorkflowTransitionEvent(
+                    this, agendamento.getId(), "Agendamento",
+                    estadoAnterior.name(), EstadoAgendamento.CANCELADO.name(),
+                    "Cancelado pelo sistema"));
         }
 
         agendamentoRepository.deleteById(id);
