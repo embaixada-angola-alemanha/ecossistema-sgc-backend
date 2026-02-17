@@ -11,6 +11,8 @@ import ao.gov.embaixada.sgc.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -106,5 +108,79 @@ class CidadaoServiceTest {
 
         CidadaoResponse updated = cidadaoService.updateEstado(created.id(), EstadoCidadao.INACTIVO);
         assertEquals(EstadoCidadao.INACTIVO, updated.estado());
+    }
+
+    @Test
+    void shouldFindAllWithNoFilters() {
+        cidadaoService.create(new CidadaoCreateRequest(
+                "SPEC001", "Test One", null, Sexo.MASCULINO, "Angolana",
+                null, null, null, null, null));
+        cidadaoService.create(new CidadaoCreateRequest(
+                "SPEC002", "Test Two", null, Sexo.FEMININO, "Angolana",
+                null, null, null, null, null));
+
+        Page<CidadaoResponse> result = cidadaoService.findAll(null, null, null, null, Pageable.unpaged());
+        assertTrue(result.getTotalElements() >= 2);
+    }
+
+    @Test
+    void shouldFilterByNome() {
+        cidadaoService.create(new CidadaoCreateRequest(
+                "NOME001", "Unique Searchable Name", null, null, "Angolana",
+                null, null, null, null, null));
+
+        Page<CidadaoResponse> result = cidadaoService.findAll("Unique Searchable", null, null, null, Pageable.unpaged());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Unique Searchable Name", result.getContent().get(0).nomeCompleto());
+    }
+
+    @Test
+    void shouldFilterByEstado() {
+        CidadaoResponse created = cidadaoService.create(new CidadaoCreateRequest(
+                "ESTADO001", "Estado Filter Test", null, null, "Angolana",
+                null, null, null, null, null));
+        cidadaoService.updateEstado(created.id(), EstadoCidadao.SUSPENSO);
+
+        Page<CidadaoResponse> result = cidadaoService.findAll(null, EstadoCidadao.SUSPENSO, null, null, Pageable.unpaged());
+        assertTrue(result.getTotalElements() >= 1);
+        assertTrue(result.getContent().stream().allMatch(c -> c.estado() == EstadoCidadao.SUSPENSO));
+    }
+
+    @Test
+    void shouldFilterBySexo() {
+        cidadaoService.create(new CidadaoCreateRequest(
+                "SEXO001", "Sexo Filter Test", null, Sexo.FEMININO, "Angolana",
+                null, null, null, null, null));
+
+        Page<CidadaoResponse> result = cidadaoService.findAll(null, null, Sexo.FEMININO, null, Pageable.unpaged());
+        assertTrue(result.getTotalElements() >= 1);
+        assertTrue(result.getContent().stream().allMatch(c -> c.sexo() == Sexo.FEMININO));
+    }
+
+    @Test
+    void shouldFilterCombined() {
+        cidadaoService.create(new CidadaoCreateRequest(
+                "COMB001", "Combined Filter Person", null, Sexo.MASCULINO, "Portuguesa",
+                null, null, null, null, null));
+
+        Page<CidadaoResponse> result = cidadaoService.findAll(
+                "Combined", null, Sexo.MASCULINO, "Portuguesa", Pageable.unpaged());
+        assertEquals(1, result.getTotalElements());
+    }
+
+    @Test
+    void shouldDeleteCidadao() {
+        CidadaoResponse created = cidadaoService.create(new CidadaoCreateRequest(
+                "DEL001", "Delete Test", null, null, "Angolana",
+                null, null, null, null, null));
+
+        cidadaoService.delete(created.id());
+
+        assertThrows(ResourceNotFoundException.class, () -> cidadaoService.findById(created.id()));
+    }
+
+    @Test
+    void shouldThrowNotFoundOnDeleteInvalidId() {
+        assertThrows(ResourceNotFoundException.class, () -> cidadaoService.delete(UUID.randomUUID()));
     }
 }

@@ -2,17 +2,20 @@ package ao.gov.embaixada.sgc.dto;
 
 import ao.gov.embaixada.sgc.enums.EstadoCivil;
 import ao.gov.embaixada.sgc.enums.Sexo;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
 public record CidadaoUpdateRequest(
-        String nomeCompleto,
-        LocalDate dataNascimento,
+        @Size(max = 255) String nomeCompleto,
+        @Past LocalDate dataNascimento,
         Sexo sexo,
-        String nacionalidade,
+        @Size(max = 100) String nacionalidade,
         EstadoCivil estadoCivil,
-        String email,
-        String telefone,
+        @Email String email,
+        @Size(max = 50) String telefone,
         String enderecoAngola,
         String enderecoAlemanha
 ) {}

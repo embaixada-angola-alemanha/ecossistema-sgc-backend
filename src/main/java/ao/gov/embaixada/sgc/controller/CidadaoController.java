@@ -6,6 +6,7 @@ import ao.gov.embaixada.sgc.dto.CidadaoCreateRequest;
 import ao.gov.embaixada.sgc.dto.CidadaoResponse;
 import ao.gov.embaixada.sgc.dto.CidadaoUpdateRequest;
 import ao.gov.embaixada.sgc.enums.EstadoCidadao;
+import ao.gov.embaixada.sgc.enums.Sexo;
 import ao.gov.embaixada.sgc.service.CidadaoService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/cidadaos")
+@RequestMapping("/api/v1/cidadaos")
 public class CidadaoController {
 
     private final CidadaoService cidadaoService;
@@ -41,19 +42,13 @@ public class CidadaoController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<CidadaoResponse>>> findAll(
-            @RequestParam(required = false) EstadoCidadao estado,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) EstadoCidadao estado,
+            @RequestParam(required = false) Sexo sexo,
+            @RequestParam(required = false) String nacionalidade,
             @PageableDefault(size = 20) Pageable pageable) {
-        if (search != null && !search.isBlank()) {
-            return ResponseEntity.ok(ApiResponse.success(
-                    PagedResponse.of(cidadaoService.search(search, pageable))));
-        }
-        if (estado != null) {
-            return ResponseEntity.ok(ApiResponse.success(
-                    PagedResponse.of(cidadaoService.findByEstado(estado, pageable))));
-        }
         return ResponseEntity.ok(ApiResponse.success(
-                PagedResponse.of(cidadaoService.findAll(pageable))));
+                PagedResponse.of(cidadaoService.findAll(search, estado, sexo, nacionalidade, pageable))));
     }
 
     @PutMapping("/{id}")

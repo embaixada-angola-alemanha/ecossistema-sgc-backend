@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/processos")
+@RequestMapping("/api/v1/processos")
 public class ProcessoController {
 
     private final ProcessoService processoService;

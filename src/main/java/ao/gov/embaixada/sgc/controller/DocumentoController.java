@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/cidadaos/{cidadaoId}/documentos")
+@RequestMapping("/api/v1/cidadaos/{cidadaoId}/documentos")
 public class DocumentoController {
 
     private final DocumentoService documentoService;

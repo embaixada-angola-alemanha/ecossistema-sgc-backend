@@ -5,12 +5,15 @@ import ao.gov.embaixada.sgc.dto.CidadaoResponse;
 import ao.gov.embaixada.sgc.dto.CidadaoUpdateRequest;
 import ao.gov.embaixada.sgc.entity.Cidadao;
 import ao.gov.embaixada.sgc.enums.EstadoCidadao;
+import ao.gov.embaixada.sgc.enums.Sexo;
 import ao.gov.embaixada.sgc.exception.DuplicateResourceException;
 import ao.gov.embaixada.sgc.exception.ResourceNotFoundException;
 import ao.gov.embaixada.sgc.mapper.CidadaoMapper;
 import ao.gov.embaixada.sgc.repository.CidadaoRepository;
+import ao.gov.embaixada.sgc.specification.CidadaoSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,18 +49,14 @@ public class CidadaoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CidadaoResponse> findAll(Pageable pageable) {
-        return cidadaoRepository.findAll(pageable).map(cidadaoMapper::toResponse);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<CidadaoResponse> findByEstado(EstadoCidadao estado, Pageable pageable) {
-        return cidadaoRepository.findByEstado(estado, pageable).map(cidadaoMapper::toResponse);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<CidadaoResponse> search(String nome, Pageable pageable) {
-        return cidadaoRepository.searchByNome(nome, pageable).map(cidadaoMapper::toResponse);
+    public Page<CidadaoResponse> findAll(String search, EstadoCidadao estado,
+                                          Sexo sexo, String nacionalidade,
+                                          Pageable pageable) {
+        Specification<Cidadao> spec = Specification.where(CidadaoSpecification.withNome(search))
+                .and(CidadaoSpecification.withEstado(estado))
+                .and(CidadaoSpecification.withSexo(sexo))
+                .and(CidadaoSpecification.withNacionalidade(nacionalidade));
+        return cidadaoRepository.findAll(spec, pageable).map(cidadaoMapper::toResponse);
     }
 
     public CidadaoResponse update(UUID id, CidadaoUpdateRequest request) {

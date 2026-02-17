@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -68,7 +69,7 @@ class CidadaoControllerTest {
                 Sexo.MASCULINO, "Angolana", null,
                 "joao@email.com", null, null, null);
 
-        mockMvc.perform(post("/api/cidadaos")
+        mockMvc.perform(post("/api/v1/cidadaos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -88,7 +89,7 @@ class CidadaoControllerTest {
 
         when(cidadaoService.findById(id)).thenReturn(response);
 
-        mockMvc.perform(get("/api/cidadaos/{id}", id))
+        mockMvc.perform(get("/api/v1/cidadaos/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nomeCompleto").value("Maria Santos"));
     }
@@ -103,10 +104,56 @@ class CidadaoControllerTest {
                 EstadoCidadao.ACTIVO, 0, 0, Instant.now(), Instant.now());
 
         Page<CidadaoResponse> page = new PageImpl<>(List.of(response));
-        when(cidadaoService.findAll(any(Pageable.class))).thenReturn(page);
+        when(cidadaoService.findAll(any(), any(), any(), any(), any(Pageable.class))).thenReturn(page);
 
-        mockMvc.perform(get("/api/cidadaos"))
+        mockMvc.perform(get("/api/v1/cidadaos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].nomeCompleto").value("Pedro Costa"));
+    }
+
+    @Test
+    void shouldListCidadaosWithFilters() throws Exception {
+        UUID id = UUID.randomUUID();
+        CidadaoResponse response = new CidadaoResponse(
+                id, "N2222222", "Ana Ferreira", null,
+                Sexo.FEMININO, "Angolana", null,
+                null, null, null, null,
+                EstadoCidadao.ACTIVO, 0, 0, Instant.now(), Instant.now());
+
+        Page<CidadaoResponse> page = new PageImpl<>(List.of(response));
+        when(cidadaoService.findAll(any(), any(), any(), any(), any(Pageable.class))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/cidadaos")
+                        .param("search", "Ana")
+                        .param("estado", "ACTIVO")
+                        .param("sexo", "FEMININO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].nomeCompleto").value("Ana Ferreira"));
+    }
+
+    @Test
+    void shouldRejectInvalidEmail() throws Exception {
+        CidadaoCreateRequest request = new CidadaoCreateRequest(
+                "N5555555", "Test User", LocalDate.of(1990, 1, 15),
+                null, null, null,
+                "not-an-email", null, null, null);
+
+        mockMvc.perform(post("/api/v1/cidadaos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectBlankName() throws Exception {
+        CidadaoCreateRequest request = new CidadaoCreateRequest(
+                "N6666666", "", null,
+                null, null, null,
+                null, null, null, null);
+
+        mockMvc.perform(post("/api/v1/cidadaos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
     }
 }
