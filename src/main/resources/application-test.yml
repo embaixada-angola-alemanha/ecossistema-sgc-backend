@@ -19,5 +19,7 @@ spring:
           issuer-uri: http://localhost:8080/realms/ecossistema
 
 ecossistema:
+  notification:
+    enabled: false
   security:
     enabled: false

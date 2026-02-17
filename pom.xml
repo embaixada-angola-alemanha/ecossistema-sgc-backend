@@ -65,6 +65,11 @@
             <artifactId>commons-audit</artifactId>
             <version>${commons.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ao.gov.embaixada</groupId>
+            <artifactId>commons-notification</artifactId>
+            <version>${commons.version}</version>
+        </dependency>
 
         <!-- Database -->
         <dependency>
