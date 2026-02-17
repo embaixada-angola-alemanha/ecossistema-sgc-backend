@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,10 @@ public interface VisaRepository extends JpaRepository<VisaApplication, UUID> {
     long countByEstado(EstadoVisto estado);
 
     long countByCidadaoId(UUID cidadaoId);
+
+    long countByEstadoAndCreatedAtBetween(EstadoVisto estado, Instant start, Instant end);
+
+    long countByTipoAndCreatedAtBetween(TipoVisto tipo, Instant start, Instant end);
+
+    long countByCreatedAtBetween(Instant start, Instant end);
 }

@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,10 @@ public interface ServicoNotarialRepository extends JpaRepository<ServicoNotarial
     long countByEstado(EstadoServicoNotarial estado);
 
     long countByCidadaoId(UUID cidadaoId);
+
+    long countByEstadoAndCreatedAtBetween(EstadoServicoNotarial estado, Instant start, Instant end);
+
+    long countByTipoAndCreatedAtBetween(TipoServicoNotarial tipo, Instant start, Instant end);
+
+    long countByCreatedAtBetween(Instant start, Instant end);
 }

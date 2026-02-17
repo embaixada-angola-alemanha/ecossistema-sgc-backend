@@ -20,6 +20,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ao.gov.embaixada.commons.audit.Auditable;
+import ao.gov.embaixada.commons.audit.AuditAction;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,6 +60,7 @@ public class VisaService {
         this.eventPublisher = eventPublisher;
     }
 
+    @Auditable(action = AuditAction.CREATE)
     public VisaResponse create(VisaCreateRequest request) {
         Cidadao cidadao = cidadaoRepository.findById(request.cidadaoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cidadao", request.cidadaoId()));
@@ -107,6 +111,7 @@ public class VisaService {
                 .map(visaMapper::toHistoricoResponse);
     }
 
+    @Auditable(action = AuditAction.UPDATE)
     public VisaResponse update(UUID id, VisaUpdateRequest request) {
         VisaApplication visa = visaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Visa", id));
@@ -115,6 +120,7 @@ public class VisaService {
         return visaMapper.toResponse(visa);
     }
 
+    @Auditable(action = AuditAction.UPDATE)
     public VisaResponse updateEstado(UUID id, EstadoVisto novoEstado, String comentario) {
         VisaApplication visa = visaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Visa", id));
@@ -161,6 +167,7 @@ public class VisaService {
         return visaMapper.toResponse(visa);
     }
 
+    @Auditable(action = AuditAction.DELETE)
     public void delete(UUID id) {
         if (!visaRepository.existsById(id)) {
             throw new ResourceNotFoundException("Visa", id);

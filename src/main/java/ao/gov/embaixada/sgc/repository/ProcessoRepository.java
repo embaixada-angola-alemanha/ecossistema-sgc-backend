@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,4 +33,10 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
 
     @Query("SELECT COUNT(p) FROM Processo p WHERE p.cidadao.id = :cidadaoId AND p.estado = :estado")
     long countByCidadaoIdAndEstado(@Param("cidadaoId") UUID cidadaoId, @Param("estado") EstadoProcesso estado);
+
+    long countByEstadoAndCreatedAtBetween(EstadoProcesso estado, Instant start, Instant end);
+
+    long countByTipoAndCreatedAtBetween(TipoProcesso tipo, Instant start, Instant end);
+
+    long countByCreatedAtBetween(Instant start, Instant end);
 }

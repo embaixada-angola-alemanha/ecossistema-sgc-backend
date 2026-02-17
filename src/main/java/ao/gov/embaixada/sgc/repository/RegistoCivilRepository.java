@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,10 @@ public interface RegistoCivilRepository extends JpaRepository<RegistoCivil, UUID
     long countByEstado(EstadoRegistoCivil estado);
 
     long countByCidadaoId(UUID cidadaoId);
+
+    long countByEstadoAndCreatedAtBetween(EstadoRegistoCivil estado, Instant start, Instant end);
+
+    long countByTipoAndCreatedAtBetween(TipoRegistoCivil tipo, Instant start, Instant end);
+
+    long countByCreatedAtBetween(Instant start, Instant end);
 }

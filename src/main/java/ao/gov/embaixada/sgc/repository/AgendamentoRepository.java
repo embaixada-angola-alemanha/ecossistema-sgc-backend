@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -30,4 +31,10 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, UUID> 
     List<Agendamento> findByDataHoraBetweenAndTipoAndEstadoIn(
             LocalDateTime start, LocalDateTime end,
             TipoAgendamento tipo, List<EstadoAgendamento> estados);
+
+    long countByEstadoAndCreatedAtBetween(EstadoAgendamento estado, Instant start, Instant end);
+
+    long countByTipoAndCreatedAtBetween(TipoAgendamento tipo, Instant start, Instant end);
+
+    long countByCreatedAtBetween(Instant start, Instant end);
 }

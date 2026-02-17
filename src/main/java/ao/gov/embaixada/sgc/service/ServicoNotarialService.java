@@ -21,6 +21,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ao.gov.embaixada.commons.audit.Auditable;
+import ao.gov.embaixada.commons.audit.AuditAction;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -61,6 +64,7 @@ public class ServicoNotarialService {
         this.eventPublisher = eventPublisher;
     }
 
+    @Auditable(action = AuditAction.CREATE)
     public ServicoNotarialResponse create(ServicoNotarialCreateRequest request) {
         Cidadao cidadao = cidadaoRepository.findById(request.cidadaoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cidadao", request.cidadaoId()));
@@ -111,6 +115,7 @@ public class ServicoNotarialService {
                 .map(mapper::toHistoricoResponse);
     }
 
+    @Auditable(action = AuditAction.UPDATE)
     public ServicoNotarialResponse update(UUID id, ServicoNotarialUpdateRequest request) {
         ServicoNotarial servico = servicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ServicoNotarial", id));
@@ -119,6 +124,7 @@ public class ServicoNotarialService {
         return mapper.toResponse(servico);
     }
 
+    @Auditable(action = AuditAction.UPDATE)
     public ServicoNotarialResponse updateEstado(UUID id, EstadoServicoNotarial novoEstado, String comentario) {
         ServicoNotarial servico = servicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ServicoNotarial", id));
@@ -179,6 +185,7 @@ public class ServicoNotarialService {
         return mapper.toResponse(servico);
     }
 
+    @Auditable(action = AuditAction.DELETE)
     public void delete(UUID id) {
         if (!servicoRepository.existsById(id)) {
             throw new ResourceNotFoundException("ServicoNotarial", id);

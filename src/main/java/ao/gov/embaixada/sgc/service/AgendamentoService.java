@@ -21,6 +21,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ao.gov.embaixada.commons.audit.Auditable;
+import ao.gov.embaixada.commons.audit.AuditAction;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -60,6 +63,7 @@ public class AgendamentoService {
         this.eventPublisher = eventPublisher;
     }
 
+    @Auditable(action = AuditAction.CREATE)
     public AgendamentoResponse create(AgendamentoCreateRequest request) {
         Cidadao cidadao = cidadaoRepository.findById(request.cidadaoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cidadao", request.cidadaoId()));
@@ -121,6 +125,7 @@ public class AgendamentoService {
                 .map(agendamentoMapper::toHistoricoResponse);
     }
 
+    @Auditable(action = AuditAction.UPDATE)
     public AgendamentoResponse reschedule(UUID id, AgendamentoUpdateRequest request) {
         Agendamento agendamento = agendamentoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento", id));
@@ -148,6 +153,7 @@ public class AgendamentoService {
         return agendamentoMapper.toResponse(agendamento);
     }
 
+    @Auditable(action = AuditAction.UPDATE)
     public AgendamentoResponse updateEstado(UUID id, EstadoAgendamento novoEstado, String comentario) {
         Agendamento agendamento = agendamentoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento", id));
@@ -172,6 +178,7 @@ public class AgendamentoService {
         return agendamentoMapper.toResponse(agendamento);
     }
 
+    @Auditable(action = AuditAction.DELETE)
     public void delete(UUID id) {
         Agendamento agendamento = agendamentoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento", id));

@@ -21,6 +21,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ao.gov.embaixada.commons.audit.Auditable;
+import ao.gov.embaixada.commons.audit.AuditAction;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -58,6 +61,7 @@ public class RegistoCivilService {
         this.eventPublisher = eventPublisher;
     }
 
+    @Auditable(action = AuditAction.CREATE)
     public RegistoCivilResponse create(RegistoCivilCreateRequest request) {
         Cidadao cidadao = cidadaoRepository.findById(request.cidadaoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cidadao", request.cidadaoId()));
@@ -107,6 +111,7 @@ public class RegistoCivilService {
                 .map(mapper::toHistoricoResponse);
     }
 
+    @Auditable(action = AuditAction.UPDATE)
     public RegistoCivilResponse update(UUID id, RegistoCivilUpdateRequest request) {
         RegistoCivil registo = registoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RegistoCivil", id));
@@ -115,6 +120,7 @@ public class RegistoCivilService {
         return mapper.toResponse(registo);
     }
 
+    @Auditable(action = AuditAction.UPDATE)
     public RegistoCivilResponse updateEstado(UUID id, EstadoRegistoCivil novoEstado, String comentario) {
         RegistoCivil registo = registoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RegistoCivil", id));
@@ -168,6 +174,7 @@ public class RegistoCivilService {
         return mapper.toResponse(registo);
     }
 
+    @Auditable(action = AuditAction.DELETE)
     public void delete(UUID id) {
         if (!registoRepository.existsById(id)) {
             throw new ResourceNotFoundException("RegistoCivil", id);
