@@ -1,6 +1,5 @@
 package ao.gov.embaixada.sgc.service;
 
-import ao.gov.embaixada.commons.notification.NotificationService;
 import ao.gov.embaixada.sgc.dto.*;
 import ao.gov.embaixada.sgc.entity.Agendamento;
 import ao.gov.embaixada.sgc.entity.AgendamentoHistorico;
@@ -19,14 +18,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -43,7 +40,6 @@ public class AgendamentoService {
     private final AgendamentoMapper agendamentoMapper;
     private final AgendamentoStateMachine stateMachine;
     private final AgendamentoSlotConfig slotConfig;
-    private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
 
     private final AtomicLong agendamentoCounter = new AtomicLong(System.currentTimeMillis() % 100000);
@@ -54,7 +50,6 @@ public class AgendamentoService {
                               AgendamentoMapper agendamentoMapper,
                               AgendamentoStateMachine stateMachine,
                               AgendamentoSlotConfig slotConfig,
-                              @Nullable NotificationService notificationService,
                               ApplicationEventPublisher eventPublisher) {
         this.agendamentoRepository = agendamentoRepository;
         this.historicoRepository = historicoRepository;
@@ -62,7 +57,6 @@ public class AgendamentoService {
         this.agendamentoMapper = agendamentoMapper;
         this.stateMachine = stateMachine;
         this.slotConfig = slotConfig;
-        this.notificationService = notificationService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -82,11 +76,9 @@ public class AgendamentoService {
 
         addHistorico(agendamento, null, EstadoAgendamento.PENDENTE, "Agendamento criado");
 
-        sendNotification(cidadao, "Agendamento Criado", "agendamento-criado",
-                Map.of("numero", agendamento.getNumeroAgendamento(),
-                        "tipo", agendamento.getTipo().name(),
-                        "dataHora", agendamento.getDataHora().format(DATE_FMT),
-                        "local", agendamento.getLocal()));
+        eventPublisher.publishEvent(new WorkflowTransitionEvent(
+                this, agendamento.getId(), "Agendamento",
+                null, EstadoAgendamento.PENDENTE.name(), "Agendamento criado"));
 
         return agendamentoMapper.toResponse(agendamento);
     }
@@ -153,10 +145,6 @@ public class AgendamentoService {
                 estadoAnterior.name(), EstadoAgendamento.REAGENDADO.name(),
                 "Reagendado para " + request.dataHora().format(DATE_FMT)));
 
-        sendNotification(agendamento.getCidadao(), "Agendamento Reagendado", "agendamento-reagendado",
-                Map.of("numero", agendamento.getNumeroAgendamento(),
-                        "novaDataHora", agendamento.getDataHora().format(DATE_FMT)));
-
         return agendamentoMapper.toResponse(agendamento);
     }
 
@@ -180,17 +168,6 @@ public class AgendamentoService {
         eventPublisher.publishEvent(new WorkflowTransitionEvent(
                 this, agendamento.getId(), "Agendamento",
                 estadoAnterior.name(), novoEstado.name(), comentario));
-
-        if (novoEstado == EstadoAgendamento.CONFIRMADO) {
-            sendNotification(agendamento.getCidadao(), "Agendamento Confirmado", "agendamento-confirmado",
-                    Map.of("numero", agendamento.getNumeroAgendamento(),
-                            "dataHora", agendamento.getDataHora().format(DATE_FMT),
-                            "local", agendamento.getLocal()));
-        } else if (novoEstado == EstadoAgendamento.CANCELADO) {
-            sendNotification(agendamento.getCidadao(), "Agendamento Cancelado", "agendamento-cancelado",
-                    Map.of("numero", agendamento.getNumeroAgendamento(),
-                            "motivo", comentario != null ? comentario : ""));
-        }
 
         return agendamentoMapper.toResponse(agendamento);
     }
@@ -234,23 +211,6 @@ public class AgendamentoService {
         historico.setEstadoNovo(estadoNovo);
         historico.setComentario(comentario);
         historicoRepository.save(historico);
-    }
-
-    private void sendNotification(Cidadao cidadao, String subject, String template,
-                                   Map<String, Object> variables) {
-        if (notificationService == null) {
-            return;
-        }
-        String email = cidadao.getEmail();
-        if (email == null || email.isBlank()) {
-            log.debug("Cidadao {} has no email, skipping notification", cidadao.getId());
-            return;
-        }
-        try {
-            notificationService.sendEmail(email, subject, template, variables);
-        } catch (Exception e) {
-            log.warn("Failed to send notification to {}: {}", email, e.getMessage());
-        }
     }
 
     private String generateNumero() {

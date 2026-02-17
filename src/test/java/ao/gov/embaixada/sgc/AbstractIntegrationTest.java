@@ -6,6 +6,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.RabbitMQContainer;
 
 @SpringBootTest
 @ActiveProfiles("integration")
@@ -20,9 +21,12 @@ public abstract class AbstractIntegrationTest {
             .withUserName("testminio")
             .withPassword("testminio123");
 
+    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3-management-alpine");
+
     static {
         postgres.start();
         minio.start();
+        rabbitmq.start();
     }
 
     @DynamicPropertySource
@@ -36,5 +40,9 @@ public abstract class AbstractIntegrationTest {
         registry.add("ecossistema.storage.access-key", minio::getUserName);
         registry.add("ecossistema.storage.secret-key", minio::getPassword);
         registry.add("ecossistema.storage.default-bucket", () -> "sgc-test");
+        registry.add("spring.rabbitmq.host", rabbitmq::getHost);
+        registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
+        registry.add("spring.rabbitmq.username", () -> "guest");
+        registry.add("spring.rabbitmq.password", () -> "guest");
     }
 }

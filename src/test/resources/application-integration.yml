@@ -22,6 +22,6 @@ ecossistema:
   storage:
     enabled: true
   notification:
-    enabled: false
+    enabled: true
   security:
     enabled: false
