@@ -2,6 +2,7 @@ package ao.gov.embaixada.sgc.service;
 
 import ao.gov.embaixada.commons.storage.StorageService;
 import ao.gov.embaixada.sgc.entity.RegistoCivil;
+import ao.gov.embaixada.sgc.entity.ServicoNotarial;
 import ao.gov.embaixada.sgc.enums.TipoRegistoCivil;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
@@ -189,6 +190,148 @@ public class CertificadoService {
         table.addCell(labelCell);
         table.addCell(valueCell);
     }
+
+    // ── Notarial Services ──
+
+    public String generateAndStoreNotarial(ServicoNotarial servico) {
+        byte[] pdfBytes = generateNotarialPdf(servico);
+        String objectKey = buildNotarialObjectKey(servico);
+
+        storageService.upload(
+                storageService.getDefaultBucket(),
+                objectKey,
+                new ByteArrayInputStream(pdfBytes),
+                pdfBytes.length,
+                "application/pdf"
+        );
+
+        log.info("Notarial certificate PDF generated and stored: {}", objectKey);
+        return objectKey;
+    }
+
+    public byte[] generateNotarialPdf(ServicoNotarial servico) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4, 50, 50, 50, 50);
+
+        try {
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            addHeader(document);
+
+            switch (servico.getTipo()) {
+                case PROCURACAO -> addProcuracaoContent(document, servico);
+                case LEGALIZACAO -> addLegalizacaoContent(document, servico);
+                case APOSTILA -> addApostilaContent(document, servico);
+                case COPIA_CERTIFICADA -> addCopiaCertificadaContent(document, servico);
+            }
+
+            addNotarialFooter(document, servico);
+
+            document.close();
+        } catch (DocumentException e) {
+            throw new RuntimeException("Erro ao gerar certificado notarial PDF", e);
+        }
+
+        return baos.toByteArray();
+    }
+
+    private void addProcuracaoContent(Document document, ServicoNotarial servico) throws DocumentException {
+        Font certTitleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+
+        Paragraph title = new Paragraph("PROCURACAO", certTitleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+        document.add(new Paragraph(" "));
+
+        PdfPTable table = createTable();
+        addRow(table, "N.o de Servico", servico.getNumeroServico());
+        addRow(table, "Requerente", servico.getCidadao() != null ? servico.getCidadao().getNomeCompleto() : "-");
+        addRow(table, "Outorgante", nvl(servico.getOutorgante()));
+        addRow(table, "Outorgado", nvl(servico.getOutorgado()));
+        addRow(table, "Finalidade", nvl(servico.getFinalidadeProcuracao()));
+        document.add(table);
+    }
+
+    private void addLegalizacaoContent(Document document, ServicoNotarial servico) throws DocumentException {
+        Font certTitleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+
+        Paragraph title = new Paragraph("TERMO DE LEGALIZACAO", certTitleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+        document.add(new Paragraph(" "));
+
+        PdfPTable table = createTable();
+        addRow(table, "N.o de Servico", servico.getNumeroServico());
+        addRow(table, "Requerente", servico.getCidadao() != null ? servico.getCidadao().getNomeCompleto() : "-");
+        addRow(table, "Documento de Origem", nvl(servico.getDocumentoOrigem()));
+        addRow(table, "Pais de Origem", nvl(servico.getPaisOrigem()));
+        addRow(table, "Entidade Emissora", nvl(servico.getEntidadeEmissora()));
+        document.add(table);
+    }
+
+    private void addApostilaContent(Document document, ServicoNotarial servico) throws DocumentException {
+        Font certTitleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+
+        Paragraph title = new Paragraph("APOSTILA", certTitleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+        document.add(new Paragraph(" "));
+
+        PdfPTable table = createTable();
+        addRow(table, "N.o de Servico", servico.getNumeroServico());
+        addRow(table, "Requerente", servico.getCidadao() != null ? servico.getCidadao().getNomeCompleto() : "-");
+        addRow(table, "Documento Apostilado", nvl(servico.getDocumentoApostilado()));
+        addRow(table, "Pais de Destino", nvl(servico.getPaisDestino()));
+        document.add(table);
+    }
+
+    private void addCopiaCertificadaContent(Document document, ServicoNotarial servico) throws DocumentException {
+        Font certTitleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+
+        Paragraph title = new Paragraph("COPIA CERTIFICADA", certTitleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+        document.add(new Paragraph(" "));
+
+        PdfPTable table = createTable();
+        addRow(table, "N.o de Servico", servico.getNumeroServico());
+        addRow(table, "Requerente", servico.getCidadao() != null ? servico.getCidadao().getNomeCompleto() : "-");
+        addRow(table, "Documento Original", nvl(servico.getDocumentoOriginalRef()));
+        addRow(table, "Numero de Copias", servico.getNumeroCopias() != null ? String.valueOf(servico.getNumeroCopias()) : "1");
+        document.add(table);
+    }
+
+    private void addNotarialFooter(Document document, ServicoNotarial servico) throws DocumentException {
+        Font footerFont = new Font(Font.HELVETICA, 9, Font.ITALIC, Color.GRAY);
+
+        document.add(new Paragraph(" "));
+        document.add(new Paragraph(" "));
+
+        Paragraph obs = new Paragraph(
+                "Observacoes: " + nvl(servico.getObservacoes()), footerFont);
+        document.add(obs);
+
+        document.add(new Paragraph(" "));
+
+        Paragraph footer = new Paragraph(
+                "Documento emitido electronicamente pela Seccao Consular da Embaixada de Angola em Berlim.",
+                footerFont);
+        footer.setAlignment(Element.ALIGN_CENTER);
+        document.add(footer);
+    }
+
+    private String buildNotarialObjectKey(ServicoNotarial servico) {
+        String prefix = switch (servico.getTipo()) {
+            case PROCURACAO -> "procuracao";
+            case LEGALIZACAO -> "legalizacao";
+            case APOSTILA -> "apostila";
+            case COPIA_CERTIFICADA -> "copia_certificada";
+        };
+        return "notarial/" + prefix + "/" + servico.getId() + "/" + servico.getNumeroServico() + ".pdf";
+    }
+
+    // ── Civil Registry ──
 
     private String buildObjectKey(RegistoCivil registo) {
         String prefix = switch (registo.getTipo()) {
