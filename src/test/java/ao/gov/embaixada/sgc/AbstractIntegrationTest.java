@@ -4,6 +4,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 @SpringBootTest
@@ -15,8 +16,13 @@ public abstract class AbstractIntegrationTest {
             .withUsername("test")
             .withPassword("test");
 
+    static MinIOContainer minio = new MinIOContainer("minio/minio:latest")
+            .withUserName("testminio")
+            .withPassword("testminio123");
+
     static {
         postgres.start();
+        minio.start();
     }
 
     @DynamicPropertySource
@@ -25,5 +31,10 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        registry.add("ecossistema.storage.enabled", () -> "true");
+        registry.add("ecossistema.storage.endpoint", minio::getS3URL);
+        registry.add("ecossistema.storage.access-key", minio::getUserName);
+        registry.add("ecossistema.storage.secret-key", minio::getPassword);
+        registry.add("ecossistema.storage.default-bucket", () -> "sgc-test");
     }
 }

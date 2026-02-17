@@ -47,6 +47,16 @@ public class Documento extends BaseEntity {
     @Column(nullable = false, length = 30)
     private EstadoDocumento estado = EstadoDocumento.PENDENTE;
 
+    @Column(name = "versao", nullable = false)
+    private Integer versao = 1;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "documento_original_id")
+    private Documento documentoOriginal;
+
+    @Column(name = "ficheiro_object_key", length = 500)
+    private String ficheiroObjectKey;
+
     public Cidadao getCidadao() { return cidadao; }
     public void setCidadao(Cidadao cidadao) { this.cidadao = cidadao; }
 
@@ -76,4 +86,13 @@ public class Documento extends BaseEntity {
 
     public EstadoDocumento getEstado() { return estado; }
     public void setEstado(EstadoDocumento estado) { this.estado = estado; }
+
+    public Integer getVersao() { return versao; }
+    public void setVersao(Integer versao) { this.versao = versao; }
+
+    public Documento getDocumentoOriginal() { return documentoOriginal; }
+    public void setDocumentoOriginal(Documento documentoOriginal) { this.documentoOriginal = documentoOriginal; }
+
+    public String getFicheiroObjectKey() { return ficheiroObjectKey; }
+    public void setFicheiroObjectKey(String ficheiroObjectKey) { this.ficheiroObjectKey = ficheiroObjectKey; }
 }

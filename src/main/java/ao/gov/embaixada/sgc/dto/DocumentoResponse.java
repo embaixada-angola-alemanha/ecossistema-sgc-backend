@@ -20,6 +20,8 @@ public record DocumentoResponse(
         Long ficheiroTamanho,
         String ficheiroTipo,
         EstadoDocumento estado,
+        Integer versao,
+        UUID documentoOriginalId,
         Instant createdAt,
         Instant updatedAt
 ) {}

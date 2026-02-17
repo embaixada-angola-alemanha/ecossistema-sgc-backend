@@ -60,7 +60,8 @@ class DocumentoAuthorizationTest {
                 TipoDocumento.PASSAPORTE, "P123456",
                 LocalDate.of(2024, 1, 1), LocalDate.of(2029, 1, 1),
                 null, null, null, null,
-                EstadoDocumento.PENDENTE, Instant.now(), Instant.now());
+                EstadoDocumento.PENDENTE, 1, null,
+                Instant.now(), Instant.now());
     }
 
     @Test

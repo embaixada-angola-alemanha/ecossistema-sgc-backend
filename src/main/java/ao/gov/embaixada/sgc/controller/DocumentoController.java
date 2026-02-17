@@ -2,22 +2,25 @@ package ao.gov.embaixada.sgc.controller;
 
 import ao.gov.embaixada.commons.dto.ApiResponse;
 import ao.gov.embaixada.commons.dto.PagedResponse;
-import ao.gov.embaixada.sgc.dto.DocumentoCreateRequest;
-import ao.gov.embaixada.sgc.dto.DocumentoResponse;
-import ao.gov.embaixada.sgc.dto.DocumentoUpdateRequest;
+import ao.gov.embaixada.sgc.dto.*;
 import ao.gov.embaixada.sgc.enums.EstadoDocumento;
 import ao.gov.embaixada.sgc.service.DocumentoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -101,5 +104,67 @@ public class DocumentoController {
     public ResponseEntity<Void> delete(@PathVariable UUID cidadaoId, @PathVariable UUID id) {
         documentoService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/{id}/ficheiro", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Upload de ficheiro", description = "Faz upload de um ficheiro para um documento existente")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Ficheiro carregado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Ficheiro invalido"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Documento nao encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "413", description = "Ficheiro demasiado grande")
+    })
+    public ResponseEntity<ApiResponse<DocumentoUploadResponse>> uploadFicheiro(
+            @PathVariable UUID cidadaoId, @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file) {
+        DocumentoUploadResponse response = documentoService.uploadFicheiro(cidadaoId, id, file);
+        return ResponseEntity.ok(ApiResponse.success("Ficheiro carregado", response));
+    }
+
+    @GetMapping("/{id}/ficheiro")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Download de ficheiro", description = "Faz download do ficheiro associado a um documento")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Ficheiro retornado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Documento ou ficheiro nao encontrado")
+    })
+    public ResponseEntity<InputStreamResource> downloadFicheiro(
+            @PathVariable UUID cidadaoId, @PathVariable UUID id) {
+        StorageDownloadResult result = documentoService.downloadFicheiro(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + result.filename() + "\"")
+                .contentType(MediaType.parseMediaType(result.contentType()))
+                .contentLength(result.size())
+                .body(new InputStreamResource(result.inputStream()));
+    }
+
+    @PostMapping(value = "/{id}/versoes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Criar nova versao", description = "Cria uma nova versao do documento com um novo ficheiro")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Nova versao criada"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Ficheiro invalido"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Documento nao encontrado")
+    })
+    public ResponseEntity<ApiResponse<DocumentoUploadResponse>> createNewVersion(
+            @PathVariable UUID cidadaoId, @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file) {
+        DocumentoUploadResponse response = documentoService.createNewVersion(cidadaoId, id, file);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Nova versao criada", response));
+    }
+
+    @GetMapping("/{id}/versoes")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Listar versoes", description = "Lista todas as versoes de um documento")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Versoes listadas"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Documento nao encontrado")
+    })
+    public ResponseEntity<ApiResponse<List<DocumentoVersionResponse>>> findVersions(
+            @PathVariable UUID cidadaoId, @PathVariable UUID id) {
+        List<DocumentoVersionResponse> versions = documentoService.findVersions(id);
+        return ResponseEntity.ok(ApiResponse.success(versions));
     }
 }
