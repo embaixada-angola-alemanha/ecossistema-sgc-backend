@@ -1,0 +1,50 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: sgc-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sgc_db
+    username: ecossistema
+    password: postgres_dev_2026
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/ecossistema
+
+ecossistema:
+  security:
+    enabled: true
+    issuer-uri: http://localhost:8080/realms/ecossistema
+    public-paths:
+      - /actuator/health
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+logging:
+  level:
+    ao.gov.embaixada: DEBUG
+    org.springframework.security: INFO
