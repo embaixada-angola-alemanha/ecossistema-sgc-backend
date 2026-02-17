@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -28,6 +29,7 @@ public class DocumentoController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
     public ResponseEntity<ApiResponse<DocumentoResponse>> create(
             @PathVariable UUID cidadaoId, @Valid @RequestBody DocumentoCreateRequest request) {
         DocumentoResponse response = documentoService.create(cidadaoId, request);
@@ -36,12 +38,14 @@ public class DocumentoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
     public ResponseEntity<ApiResponse<DocumentoResponse>> findById(
             @PathVariable UUID cidadaoId, @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(documentoService.findById(id)));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
     public ResponseEntity<ApiResponse<PagedResponse<DocumentoResponse>>> findByCidadao(
             @PathVariable UUID cidadaoId, @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -49,6 +53,7 @@ public class DocumentoController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
     public ResponseEntity<ApiResponse<DocumentoResponse>> update(
             @PathVariable UUID cidadaoId, @PathVariable UUID id,
             @Valid @RequestBody DocumentoUpdateRequest request) {
@@ -56,6 +61,7 @@ public class DocumentoController {
     }
 
     @PatchMapping("/{id}/estado")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
     public ResponseEntity<ApiResponse<DocumentoResponse>> updateEstado(
             @PathVariable UUID cidadaoId, @PathVariable UUID id,
             @RequestBody Map<String, String> body) {
@@ -64,6 +70,7 @@ public class DocumentoController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL')")
     public ResponseEntity<Void> delete(@PathVariable UUID cidadaoId, @PathVariable UUID id) {
         documentoService.delete(id);
         return ResponseEntity.noContent().build();

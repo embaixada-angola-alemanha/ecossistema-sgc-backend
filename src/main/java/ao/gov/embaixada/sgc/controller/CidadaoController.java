@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -29,6 +30,7 @@ public class CidadaoController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
     public ResponseEntity<ApiResponse<CidadaoResponse>> create(@Valid @RequestBody CidadaoCreateRequest request) {
         CidadaoResponse response = cidadaoService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -36,11 +38,13 @@ public class CidadaoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
     public ResponseEntity<ApiResponse<CidadaoResponse>> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(cidadaoService.findById(id)));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
     public ResponseEntity<ApiResponse<PagedResponse<CidadaoResponse>>> findAll(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) EstadoCidadao estado,
@@ -52,12 +56,14 @@ public class CidadaoController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
     public ResponseEntity<ApiResponse<CidadaoResponse>> update(
             @PathVariable UUID id, @Valid @RequestBody CidadaoUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.success(cidadaoService.update(id, request)));
     }
 
     @PatchMapping("/{id}/estado")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL')")
     public ResponseEntity<ApiResponse<CidadaoResponse>> updateEstado(
             @PathVariable UUID id, @RequestBody Map<String, String> body) {
         EstadoCidadao estado = EstadoCidadao.valueOf(body.get("estado"));
@@ -65,6 +71,7 @@ public class CidadaoController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         cidadaoService.delete(id);
         return ResponseEntity.noContent().build();
