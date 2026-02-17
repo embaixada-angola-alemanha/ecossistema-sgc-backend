@@ -8,12 +8,11 @@ import ao.gov.embaixada.sgc.enums.EstadoCivil;
 import ao.gov.embaixada.sgc.enums.Sexo;
 import ao.gov.embaixada.sgc.exception.DuplicateResourceException;
 import ao.gov.embaixada.sgc.exception.ResourceNotFoundException;
+import ao.gov.embaixada.sgc.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -21,10 +20,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class CidadaoServiceTest {
+class CidadaoServiceTest extends AbstractIntegrationTest {
 
     @Autowired
     private CidadaoService cidadaoService;

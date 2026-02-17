@@ -7,6 +7,9 @@ import ao.gov.embaixada.sgc.enums.EstadoAgendamento;
 import ao.gov.embaixada.sgc.enums.TipoAgendamento;
 import ao.gov.embaixada.sgc.service.AgendamentoService;
 import ao.gov.embaixada.sgc.service.AgendamentoSlotConfig;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -24,6 +27,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/agendamentos")
+@Tag(name = "Agendamentos", description = "Sistema de agendamento consular")
 public class AgendamentoController {
 
     private final AgendamentoService agendamentoService;
@@ -37,6 +41,13 @@ public class AgendamentoController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Criar agendamento", description = "Cria um novo agendamento consular verificando disponibilidade de slots")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Agendamento criado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Dados invalidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Cidadao nao encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Conflito de horario")
+    })
     public ResponseEntity<ApiResponse<AgendamentoResponse>> create(
             @Valid @RequestBody AgendamentoCreateRequest request) {
         AgendamentoResponse response = agendamentoService.create(request);
@@ -46,12 +57,18 @@ public class AgendamentoController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Obter agendamento por ID", description = "Retorna os dados de um agendamento especifico")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Agendamento encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Agendamento nao encontrado")
+    })
     public ResponseEntity<ApiResponse<AgendamentoResponse>> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(agendamentoService.findById(id)));
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Listar agendamentos", description = "Lista agendamentos com filtros opcionais por cidadao, estado, tipo e intervalo de datas")
     public ResponseEntity<ApiResponse<PagedResponse<AgendamentoResponse>>> findAll(
             @RequestParam(required = false) UUID cidadaoId,
             @RequestParam(required = false) EstadoAgendamento estado,
@@ -81,6 +98,12 @@ public class AgendamentoController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Reagendar agendamento", description = "Altera a data/hora de um agendamento existente")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Agendamento reagendado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Agendamento nao encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Conflito de horario")
+    })
     public ResponseEntity<ApiResponse<AgendamentoResponse>> reschedule(
             @PathVariable UUID id, @Valid @RequestBody AgendamentoUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -89,6 +112,11 @@ public class AgendamentoController {
 
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Alterar estado do agendamento", description = "Transita o agendamento para um novo estado seguindo a maquina de estados")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Estado alterado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Transicao de estado invalida")
+    })
     public ResponseEntity<ApiResponse<AgendamentoResponse>> updateEstado(
             @PathVariable UUID id, @RequestBody Map<String, String> body) {
         EstadoAgendamento estado = EstadoAgendamento.valueOf(body.get("estado"));
@@ -99,6 +127,11 @@ public class AgendamentoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Eliminar agendamento", description = "Remove permanentemente um agendamento")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "Agendamento eliminado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Agendamento nao encontrado")
+    })
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         agendamentoService.delete(id);
         return ResponseEntity.noContent().build();
@@ -106,6 +139,7 @@ public class AgendamentoController {
 
     @GetMapping("/{id}/historico")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Historico do agendamento", description = "Retorna o historico de transicoes de estado do agendamento")
     public ResponseEntity<ApiResponse<PagedResponse<AgendamentoHistoricoResponse>>> findHistorico(
             @PathVariable UUID id, @PageableDefault(size = 50) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -114,6 +148,7 @@ public class AgendamentoController {
 
     @GetMapping("/slots")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Consultar slots disponiveis", description = "Retorna os horarios disponiveis para agendamento numa data e tipo especificos")
     public ResponseEntity<ApiResponse<List<SlotDisponivelResponse>>> getAvailableSlots(
             @RequestParam TipoAgendamento tipo,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {

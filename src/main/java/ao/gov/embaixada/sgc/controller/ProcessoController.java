@@ -9,6 +9,9 @@ import ao.gov.embaixada.sgc.dto.ProcessoUpdateRequest;
 import ao.gov.embaixada.sgc.enums.EstadoProcesso;
 import ao.gov.embaixada.sgc.enums.TipoProcesso;
 import ao.gov.embaixada.sgc.service.ProcessoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -22,6 +25,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/processos")
+@Tag(name = "Processos", description = "Processos consulares e seu ciclo de vida")
 public class ProcessoController {
 
     private final ProcessoService processoService;
@@ -32,6 +36,12 @@ public class ProcessoController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Criar processo", description = "Cria um novo processo consular")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Processo criado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Dados invalidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Cidadao nao encontrado")
+    })
     public ResponseEntity<ApiResponse<ProcessoResponse>> create(
             @Valid @RequestBody ProcessoCreateRequest request) {
         ProcessoResponse response = processoService.create(request);
@@ -41,12 +51,18 @@ public class ProcessoController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Obter processo por ID", description = "Retorna os dados de um processo consular")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Processo encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Processo nao encontrado")
+    })
     public ResponseEntity<ApiResponse<ProcessoResponse>> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(processoService.findById(id)));
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Listar processos", description = "Lista processos com filtros opcionais por cidadao, estado e tipo")
     public ResponseEntity<ApiResponse<PagedResponse<ProcessoResponse>>> findAll(
             @RequestParam(required = false) UUID cidadaoId,
             @RequestParam(required = false) EstadoProcesso estado,
@@ -70,6 +86,7 @@ public class ProcessoController {
 
     @GetMapping("/{id}/historico")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @Operation(summary = "Historico do processo", description = "Retorna o historico de transicoes de estado do processo")
     public ResponseEntity<ApiResponse<PagedResponse<ProcessoHistoricoResponse>>> findHistorico(
             @PathVariable UUID id, @PageableDefault(size = 50) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -78,6 +95,11 @@ public class ProcessoController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Actualizar processo", description = "Actualiza os dados de um processo existente")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Processo actualizado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Processo nao encontrado")
+    })
     public ResponseEntity<ApiResponse<ProcessoResponse>> update(
             @PathVariable UUID id, @Valid @RequestBody ProcessoUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.success(processoService.update(id, request)));
@@ -85,6 +107,11 @@ public class ProcessoController {
 
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Alterar estado do processo", description = "Transita o processo para um novo estado seguindo a maquina de estados")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Estado alterado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Transicao de estado invalida")
+    })
     public ResponseEntity<ApiResponse<ProcessoResponse>> updateEstado(
             @PathVariable UUID id, @RequestBody Map<String, String> body) {
         EstadoProcesso estado = EstadoProcesso.valueOf(body.get("estado"));
@@ -94,6 +121,7 @@ public class ProcessoController {
 
     @PostMapping("/{id}/documentos/{documentoId}")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Associar documento ao processo", description = "Adiciona um documento existente a um processo")
     public ResponseEntity<ApiResponse<ProcessoResponse>> addDocumento(
             @PathVariable UUID id, @PathVariable UUID documentoId) {
         return ResponseEntity.ok(ApiResponse.success(processoService.addDocumento(id, documentoId)));
@@ -101,6 +129,7 @@ public class ProcessoController {
 
     @DeleteMapping("/{id}/documentos/{documentoId}")
     @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @Operation(summary = "Desassociar documento do processo", description = "Remove a associacao de um documento a um processo")
     public ResponseEntity<ApiResponse<ProcessoResponse>> removeDocumento(
             @PathVariable UUID id, @PathVariable UUID documentoId) {
         return ResponseEntity.ok(ApiResponse.success(processoService.removeDocumento(id, documentoId)));
@@ -108,6 +137,11 @@ public class ProcessoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Eliminar processo", description = "Remove permanentemente um processo consular")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "Processo eliminado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Processo nao encontrado")
+    })
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         processoService.delete(id);
         return ResponseEntity.noContent().build();

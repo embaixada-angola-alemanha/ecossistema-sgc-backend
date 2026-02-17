@@ -7,12 +7,11 @@ import ao.gov.embaixada.sgc.dto.ProcessoResponse;
 import ao.gov.embaixada.sgc.enums.*;
 import ao.gov.embaixada.sgc.exception.InvalidStateTransitionException;
 import ao.gov.embaixada.sgc.exception.ResourceNotFoundException;
+import ao.gov.embaixada.sgc.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -20,10 +19,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class ProcessoServiceTest {
+class ProcessoServiceTest extends AbstractIntegrationTest {
 
     @Autowired
     private ProcessoService processoService;

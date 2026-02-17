@@ -4,13 +4,12 @@ import ao.gov.embaixada.sgc.dto.*;
 import ao.gov.embaixada.sgc.enums.EstadoDocumento;
 import ao.gov.embaixada.sgc.enums.TipoDocumento;
 import ao.gov.embaixada.sgc.exception.ResourceNotFoundException;
+import ao.gov.embaixada.sgc.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -18,10 +17,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class DocumentoServiceTest {
+class DocumentoServiceTest extends AbstractIntegrationTest {
 
     @Autowired
     private DocumentoService documentoService;
