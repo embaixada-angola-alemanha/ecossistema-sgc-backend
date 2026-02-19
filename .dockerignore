@@ -1,0 +1,32 @@
+# Source code and build config (JAR is pre-built on host)
+src/
+pom.xml
+mvnw
+mvnw.cmd
+.mvn/
+
+# IDE files
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+.vscode/
+
+# Git
+.git/
+.github/
+.gitignore
+
+# Documentation
+*.md
+
+# CI/CD
+Dockerfile
+.dockerignore
+
+# Misc
+*.log
+*.tmp
+.env
+.env.*
