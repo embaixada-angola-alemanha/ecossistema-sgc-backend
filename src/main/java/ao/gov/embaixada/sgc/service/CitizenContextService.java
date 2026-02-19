@@ -43,6 +43,10 @@ public class CitizenContextService {
                 .flatMap(cidadaoRepository::findByKeycloakId);
     }
 
+    public Optional<UUID> getCurrentCidadaoId() {
+        return getCurrentCidadao().map(Cidadao::getId);
+    }
+
     public UUID requireCurrentCidadaoId() {
         return getCurrentCidadao()
                 .map(Cidadao::getId)

@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -77,7 +79,11 @@ public class ProcessoController {
             @RequestParam(required = false) TipoProcesso tipo,
             @PageableDefault(size = 20) Pageable pageable) {
         if (citizenContext.isCitizenOnly()) {
-            cidadaoId = citizenContext.requireCurrentCidadaoId();
+            Optional<UUID> ownId = citizenContext.getCurrentCidadaoId();
+            if (ownId.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.success(PagedResponse.of(Page.empty(pageable))));
+            }
+            cidadaoId = ownId.get();
         }
         if (cidadaoId != null) {
             return ResponseEntity.ok(ApiResponse.success(

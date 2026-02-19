@@ -23,8 +23,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -90,8 +92,12 @@ public class CidadaoController {
             @RequestParam(required = false) String nacionalidade,
             @PageableDefault(size = 20) Pageable pageable) {
         if (citizenContext.isCitizenOnly()) {
-            UUID cidadaoId = citizenContext.requireCurrentCidadaoId();
-            CidadaoResponse own = cidadaoService.findById(cidadaoId);
+            Optional<UUID> ownId = citizenContext.getCurrentCidadaoId();
+            if (ownId.isEmpty()) {
+                Page<CidadaoResponse> empty = new PageImpl<>(Collections.emptyList(), pageable, 0);
+                return ResponseEntity.ok(ApiResponse.success(PagedResponse.of(empty)));
+            }
+            CidadaoResponse own = cidadaoService.findById(ownId.get());
             Page<CidadaoResponse> page = new PageImpl<>(List.of(own), pageable, 1);
             return ResponseEntity.ok(ApiResponse.success(PagedResponse.of(page)));
         }

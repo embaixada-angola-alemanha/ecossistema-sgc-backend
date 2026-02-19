@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -90,7 +92,11 @@ public class AgendamentoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
             @PageableDefault(size = 20) Pageable pageable) {
         if (citizenContext.isCitizenOnly()) {
-            cidadaoId = citizenContext.requireCurrentCidadaoId();
+            Optional<UUID> ownId = citizenContext.getCurrentCidadaoId();
+            if (ownId.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.success(PagedResponse.of(Page.empty(pageable))));
+            }
+            cidadaoId = ownId.get();
         }
         if (cidadaoId != null) {
             return ResponseEntity.ok(ApiResponse.success(

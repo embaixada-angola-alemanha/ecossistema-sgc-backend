@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.InputStream;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -95,7 +97,11 @@ public class RegistoCivilController {
             @RequestParam(required = false) TipoRegistoCivil tipo,
             @PageableDefault(size = 20) Pageable pageable) {
         if (citizenContext.isCitizenOnly()) {
-            cidadaoId = citizenContext.requireCurrentCidadaoId();
+            Optional<UUID> ownId = citizenContext.getCurrentCidadaoId();
+            if (ownId.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.success(PagedResponse.of(Page.empty(pageable))));
+            }
+            cidadaoId = ownId.get();
         }
         if (cidadaoId != null) {
             return ResponseEntity.ok(ApiResponse.success(

@@ -1,6 +1,7 @@
 package ao.gov.embaixada.sgc.controller;
 
 import ao.gov.embaixada.sgc.dto.*;
+import ao.gov.embaixada.sgc.dto.DashboardResumoResponse.ModuloResumo;
 import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.CsvExportService;
 import ao.gov.embaixada.sgc.service.RelatorioPdfService;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/relatorios")
@@ -41,7 +43,12 @@ public class RelatorioController {
             @RequestParam(required = false) LocalDate dataInicio,
             @RequestParam(required = false) LocalDate dataFim) {
         if (citizenContext.isCitizenOnly()) {
-            return relatorioService.getCitizenDashboard(citizenContext.requireCurrentCidadaoId());
+            return citizenContext.getCurrentCidadaoId()
+                    .map(relatorioService::getCitizenDashboard)
+                    .orElseGet(() -> {
+                        ModuloResumo empty = new ModuloResumo(0, Map.of(), Map.of());
+                        return new DashboardResumoResponse(empty, empty, empty, empty, empty, 0);
+                    });
         }
         return relatorioService.getDashboardResumo(
                 new RelatorioFilter(dataInicio, dataFim, null, null, null));
