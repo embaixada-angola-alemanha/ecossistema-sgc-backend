@@ -4,6 +4,7 @@ import ao.gov.embaixada.sgc.dto.DocumentoCreateRequest;
 import ao.gov.embaixada.sgc.dto.DocumentoResponse;
 import ao.gov.embaixada.sgc.enums.EstadoDocumento;
 import ao.gov.embaixada.sgc.enums.TipoDocumento;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.DocumentoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -43,12 +44,20 @@ class DocumentoAuthorizationTest {
     @Autowired
     private DocumentoService documentoService;
 
+    @Autowired
+    private CitizenContextService citizenContext;
+
     @TestConfiguration
     @EnableMethodSecurity
     static class TestConfig {
         @Bean
         public DocumentoService documentoService() {
             return mock(DocumentoService.class);
+        }
+
+        @Bean
+        public CitizenContextService citizenContextService() {
+            return mock(CitizenContextService.class);
         }
     }
 

@@ -183,21 +183,7 @@ public class AgendamentoService {
         Agendamento agendamento = agendamentoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento", id));
 
-        EstadoAgendamento estadoAnterior = agendamento.getEstado();
-        if (!stateMachine.isTerminalState(estadoAnterior)) {
-            stateMachine.validateTransition(estadoAnterior, EstadoAgendamento.CANCELADO);
-            agendamento.setEstado(EstadoAgendamento.CANCELADO);
-            agendamento.setMotivoCancelamento("Cancelado pelo sistema");
-            agendamentoRepository.save(agendamento);
-            addHistorico(agendamento, estadoAnterior, EstadoAgendamento.CANCELADO, "Cancelado pelo sistema");
-
-            eventPublisher.publishEvent(new WorkflowTransitionEvent(
-                    this, agendamento.getId(), "Agendamento",
-                    estadoAnterior.name(), EstadoAgendamento.CANCELADO.name(),
-                    "Cancelado pelo sistema"));
-        }
-
-        agendamentoRepository.deleteById(id);
+        agendamentoRepository.delete(agendamento);
     }
 
     private void checkConflict(LocalDateTime dataHora, ao.gov.embaixada.sgc.enums.TipoAgendamento tipo) {

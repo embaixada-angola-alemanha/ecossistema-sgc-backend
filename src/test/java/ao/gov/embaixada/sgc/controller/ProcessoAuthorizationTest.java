@@ -5,6 +5,7 @@ import ao.gov.embaixada.sgc.dto.ProcessoResponse;
 import ao.gov.embaixada.sgc.enums.EstadoProcesso;
 import ao.gov.embaixada.sgc.enums.Prioridade;
 import ao.gov.embaixada.sgc.enums.TipoProcesso;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.ProcessoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -43,12 +44,20 @@ class ProcessoAuthorizationTest {
     @Autowired
     private ProcessoService processoService;
 
+    @Autowired
+    private CitizenContextService citizenContext;
+
     @TestConfiguration
     @EnableMethodSecurity
     static class TestConfig {
         @Bean
         public ProcessoService processoService() {
             return mock(ProcessoService.class);
+        }
+
+        @Bean
+        public CitizenContextService citizenContextService() {
+            return mock(CitizenContextService.class);
         }
     }
 

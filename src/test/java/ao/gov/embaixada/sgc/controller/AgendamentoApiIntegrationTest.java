@@ -194,9 +194,12 @@ class AgendamentoApiIntegrationTest extends AbstractIntegrationTest {
     void shouldDeleteAgendamento() throws Exception {
         ResponseEntity<String> createResp = restTemplate.postForEntity(
                 "/api/v1/agendamentos", agendamentoRequest("15:00:00"), String.class);
+        assertEquals(HttpStatus.CREATED, createResp.getStatusCode());
         String id = objectMapper.readTree(createResp.getBody()).at("/data/id").asText();
 
-        restTemplate.delete("/api/v1/agendamentos/" + id);
+        ResponseEntity<Void> deleteResp = restTemplate.exchange(
+                "/api/v1/agendamentos/" + id, HttpMethod.DELETE, null, Void.class);
+        assertEquals(HttpStatus.NO_CONTENT, deleteResp.getStatusCode());
 
         ResponseEntity<String> getResp = restTemplate.getForEntity(
                 "/api/v1/agendamentos/" + id, String.class);

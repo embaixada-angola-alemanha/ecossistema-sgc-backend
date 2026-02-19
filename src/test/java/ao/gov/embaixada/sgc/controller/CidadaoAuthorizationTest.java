@@ -4,6 +4,7 @@ import ao.gov.embaixada.sgc.dto.CidadaoCreateRequest;
 import ao.gov.embaixada.sgc.dto.CidadaoResponse;
 import ao.gov.embaixada.sgc.enums.EstadoCidadao;
 import ao.gov.embaixada.sgc.enums.Sexo;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.CidadaoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -42,12 +43,20 @@ class CidadaoAuthorizationTest {
     @Autowired
     private CidadaoService cidadaoService;
 
+    @Autowired
+    private CitizenContextService citizenContext;
+
     @TestConfiguration
     @EnableMethodSecurity
     static class TestConfig {
         @Bean
         public CidadaoService cidadaoService() {
             return mock(CidadaoService.class);
+        }
+
+        @Bean
+        public CitizenContextService citizenContextService() {
+            return mock(CitizenContextService.class);
         }
     }
 

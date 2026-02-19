@@ -3,6 +3,7 @@ package ao.gov.embaixada.sgc.controller;
 import ao.gov.embaixada.sgc.dto.*;
 import ao.gov.embaixada.sgc.enums.EstadoVisto;
 import ao.gov.embaixada.sgc.enums.TipoVisto;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.VisaDocumentChecklistService;
 import ao.gov.embaixada.sgc.service.VisaFeeCalculator;
 import ao.gov.embaixada.sgc.service.VisaService;
@@ -52,6 +53,9 @@ class VisaControllerTest {
     @Autowired
     private VisaDocumentChecklistService checklistService;
 
+    @Autowired
+    private CitizenContextService citizenContext;
+
     @TestConfiguration
     static class TestConfig {
         @Bean
@@ -67,6 +71,11 @@ class VisaControllerTest {
         @Bean
         public VisaDocumentChecklistService visaDocumentChecklistService() {
             return mock(VisaDocumentChecklistService.class);
+        }
+
+        @Bean
+        public CitizenContextService citizenContextService() {
+            return mock(CitizenContextService.class);
         }
     }
 

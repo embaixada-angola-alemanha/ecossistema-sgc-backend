@@ -79,17 +79,13 @@ class WorkflowEndToEndTest extends AbstractIntegrationTest {
         assertEquals(EstadoVisto.APROVADO, visa.estado());
         assertNotNull(visa.dataDecisao());
 
-        // Step 6: Issue visa
+        // Step 6: Issue visa (terminal state)
         visa = visaService.updateEstado(visa.id(), EstadoVisto.EMITIDO, "Visto emitido e colado no passaporte");
         assertEquals(EstadoVisto.EMITIDO, visa.estado());
 
-        // Step 7: Deliver
-        visa = visaService.updateEstado(visa.id(), EstadoVisto.ENTREGUE, "Passaporte entregue ao cidadão");
-        assertEquals(EstadoVisto.ENTREGUE, visa.estado());
-
         // Verify history has all transitions
         var historico = visaService.findHistorico(visa.id(), Pageable.unpaged());
-        assertEquals(6, historico.getContent().size()); // RASCUNHO creation + 5 transitions
+        assertEquals(5, historico.getContent().size()); // RASCUNHO creation + 4 transitions
     }
 
     @Test
@@ -100,11 +96,10 @@ class WorkflowEndToEndTest extends AbstractIntegrationTest {
                 Sexo.FEMININO, "Angolana", null,
                 "maria.e2e@embaixada.de", null, null, null));
 
-        // Step 2: Schedule appointment
-        LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        // Step 2: Schedule appointment (use far-future date to avoid conflicts)
         AgendamentoCreateRequest agdReq = new AgendamentoCreateRequest(
                 cidadao.id(), TipoAgendamento.PASSAPORTE,
-                nextMonday.atTime(9, 0), "Renovação de passaporte");
+                LocalDate.of(2098, 3, 2).atTime(9, 0), "Renovação de passaporte");
         AgendamentoResponse agd = agendamentoService.create(agdReq);
         assertNotNull(agd.id());
         assertEquals(EstadoAgendamento.PENDENTE, agd.estado());
@@ -149,21 +144,19 @@ class WorkflowEndToEndTest extends AbstractIntegrationTest {
                 "E2E-RESCHED-" + System.nanoTime(), "Ana E2E", null,
                 null, "Angolana", null, null, null, null, null));
 
-        LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         AgendamentoResponse agd = agendamentoService.create(new AgendamentoCreateRequest(
                 cidadao.id(), TipoAgendamento.VISTO,
-                nextMonday.atTime(10, 0), "Entrevista de visto"));
+                LocalDate.of(2098, 4, 1).atTime(10, 0), "Entrevista de visto"));
         assertEquals(60, agd.duracaoMinutos());
 
         // Confirm
         agd = agendamentoService.updateEstado(agd.id(), EstadoAgendamento.CONFIRMADO, "Confirmado");
 
         // Reschedule
-        LocalDate nextTuesday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.TUESDAY));
         agd = agendamentoService.reschedule(agd.id(),
-                new AgendamentoUpdateRequest(nextTuesday.atTime(14, 0), "Cidadão pediu nova data"));
+                new AgendamentoUpdateRequest(LocalDate.of(2098, 4, 2).atTime(14, 0), "Cidadão pediu nova data"));
         assertEquals(EstadoAgendamento.REAGENDADO, agd.estado());
-        assertEquals(nextTuesday.atTime(14, 0), agd.dataHora());
+        assertEquals(LocalDate.of(2098, 4, 2).atTime(14, 0), agd.dataHora());
     }
 
     @Test
@@ -173,7 +166,10 @@ class WorkflowEndToEndTest extends AbstractIntegrationTest {
                 null, "Angolana", null, null, null, null, null));
 
         RegistoCivilCreateRequest rcReq = new RegistoCivilCreateRequest(
-                cidadao.id(), TipoRegistoCivil.NASCIMENTO, "Registo de nascimento em Luanda",
+                cidadao.id(), TipoRegistoCivil.NASCIMENTO, LocalDate.of(2000, 1, 15),
+                "Luanda", "Registo de nascimento em Luanda",
+                "João Pai", "Maria Mãe", "Luanda",
+                null, null, null,
                 null, null, null);
         var rc = registoCivilService.create(rcReq);
         assertNotNull(rc.id());
@@ -182,10 +178,10 @@ class WorkflowEndToEndTest extends AbstractIntegrationTest {
         rc = registoCivilService.updateEstado(rc.id(), EstadoRegistoCivil.SUBMETIDO, "Submetido");
         assertEquals(EstadoRegistoCivil.SUBMETIDO, rc.estado());
 
-        rc = registoCivilService.updateEstado(rc.id(), EstadoRegistoCivil.EM_ANALISE, "Em análise");
-        rc = registoCivilService.updateEstado(rc.id(), EstadoRegistoCivil.APROVADO, "Aprovado");
-        rc = registoCivilService.updateEstado(rc.id(), EstadoRegistoCivil.EMITIDO, "Certificado emitido");
-        assertEquals(EstadoRegistoCivil.EMITIDO, rc.estado());
+        rc = registoCivilService.updateEstado(rc.id(), EstadoRegistoCivil.EM_VERIFICACAO, "Em verificação");
+        rc = registoCivilService.updateEstado(rc.id(), EstadoRegistoCivil.VERIFICADO, "Verificado");
+        rc = registoCivilService.updateEstado(rc.id(), EstadoRegistoCivil.CERTIFICADO_EMITIDO, "Certificado emitido");
+        assertEquals(EstadoRegistoCivil.CERTIFICADO_EMITIDO, rc.estado());
     }
 
     @Test
@@ -196,16 +192,19 @@ class WorkflowEndToEndTest extends AbstractIntegrationTest {
 
         ServicoNotarialCreateRequest snReq = new ServicoNotarialCreateRequest(
                 cidadao.id(), TipoServicoNotarial.PROCURACAO, "Procuração para venda de imóvel",
-                null, null, null);
+                null, null,
+                "João Outorgante", "Maria Outorgada", "Venda de imóvel em Luanda",
+                null, null, null,
+                null, null,
+                null, null);
         var sn = servicoNotarialService.create(snReq);
         assertNotNull(sn.id());
         assertEquals(EstadoServicoNotarial.RASCUNHO, sn.estado());
 
         sn = servicoNotarialService.updateEstado(sn.id(), EstadoServicoNotarial.SUBMETIDO, "Submetido");
-        sn = servicoNotarialService.updateEstado(sn.id(), EstadoServicoNotarial.EM_ANALISE, "Análise");
-        sn = servicoNotarialService.updateEstado(sn.id(), EstadoServicoNotarial.APROVADO, "Aprovado");
-        sn = servicoNotarialService.updateEstado(sn.id(), EstadoServicoNotarial.EMITIDO, "Documento emitido");
-        assertEquals(EstadoServicoNotarial.EMITIDO, sn.estado());
+        sn = servicoNotarialService.updateEstado(sn.id(), EstadoServicoNotarial.EM_PROCESSAMENTO, "Em processamento");
+        sn = servicoNotarialService.updateEstado(sn.id(), EstadoServicoNotarial.CONCLUIDO, "Documento emitido");
+        assertEquals(EstadoServicoNotarial.CONCLUIDO, sn.estado());
     }
 
     @Test
@@ -219,11 +218,10 @@ class WorkflowEndToEndTest extends AbstractIntegrationTest {
                 cidadao.id(), TipoVisto.TURISTA, "Alemã",
                 "Turismo", LocalDate.now().plusMonths(1), null, null, null, null));
 
-        // Create an appointment
-        LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        // Create an appointment (use far-future date to avoid conflicts)
         agendamentoService.create(new AgendamentoCreateRequest(
                 cidadao.id(), TipoAgendamento.PASSAPORTE,
-                nextMonday.atTime(16, 0), "Passaporte"));
+                LocalDate.of(2098, 5, 1).atTime(9, 0), "Passaporte"));
 
         // Verify both linked to same cidadao
         Page<AgendamentoResponse> agds = agendamentoService.findByCidadaoId(cidadao.id(), Pageable.unpaged());

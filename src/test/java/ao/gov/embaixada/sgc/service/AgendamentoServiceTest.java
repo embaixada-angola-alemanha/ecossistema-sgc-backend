@@ -46,16 +46,16 @@ class AgendamentoServiceTest extends AbstractIntegrationTest {
         cidadaoId = cidadao.id();
     }
 
-    private AgendamentoCreateRequest passaporteRequest() {
-        LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+    private AgendamentoCreateRequest passaporteRequest(int dayOffset) {
+        LocalDate futureDate = LocalDate.of(2099, 6, 1).plusDays(dayOffset);
         return new AgendamentoCreateRequest(
                 cidadaoId, TipoAgendamento.PASSAPORTE,
-                nextMonday.atTime(9, 0), "Renovacao de passaporte");
+                futureDate.atTime(9, 0), "Renovacao de passaporte");
     }
 
     @Test
     void shouldCreateAgendamento() {
-        AgendamentoResponse response = agendamentoService.create(passaporteRequest());
+        AgendamentoResponse response = agendamentoService.create(passaporteRequest(9));
 
         assertNotNull(response.id());
         assertNotNull(response.numeroAgendamento());
@@ -68,10 +68,9 @@ class AgendamentoServiceTest extends AbstractIntegrationTest {
 
     @Test
     void shouldSetCorrectDurationForVisto() {
-        LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         AgendamentoCreateRequest request = new AgendamentoCreateRequest(
                 cidadaoId, TipoAgendamento.VISTO,
-                nextMonday.atTime(10, 0), "Entrevista de visto");
+                LocalDate.of(2099, 7, 1).atTime(10, 0), "Entrevista de visto");
 
         AgendamentoResponse response = agendamentoService.create(request);
         assertEquals(60, response.duracaoMinutos());
@@ -79,7 +78,7 @@ class AgendamentoServiceTest extends AbstractIntegrationTest {
 
     @Test
     void shouldDetectConflict() {
-        AgendamentoCreateRequest request = passaporteRequest();
+        AgendamentoCreateRequest request = passaporteRequest(10);
         agendamentoService.create(request);
 
         assertThrows(ConflictingAppointmentException.class,
@@ -88,7 +87,7 @@ class AgendamentoServiceTest extends AbstractIntegrationTest {
 
     @Test
     void shouldFollowStateTransitions() {
-        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest());
+        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest(11));
         assertEquals(EstadoAgendamento.PENDENTE, agendamento.estado());
 
         agendamento = agendamentoService.updateEstado(agendamento.id(), EstadoAgendamento.CONFIRMADO, "Confirmado");
@@ -100,7 +99,7 @@ class AgendamentoServiceTest extends AbstractIntegrationTest {
 
     @Test
     void shouldRejectInvalidTransition() {
-        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest());
+        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest(12));
 
         assertThrows(InvalidStateTransitionException.class, () ->
                 agendamentoService.updateEstado(agendamento.id(), EstadoAgendamento.COMPLETADO, "Invalid"));
@@ -108,21 +107,20 @@ class AgendamentoServiceTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReschedule() {
-        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest());
+        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest(13));
         agendamentoService.updateEstado(agendamento.id(), EstadoAgendamento.CONFIRMADO, "Confirmado");
 
-        LocalDate nextTuesday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.TUESDAY));
         AgendamentoUpdateRequest updateRequest = new AgendamentoUpdateRequest(
-                nextTuesday.atTime(10, 0), "Nova data");
+                LocalDate.of(2099, 8, 1).atTime(10, 0), "Nova data");
 
         agendamento = agendamentoService.reschedule(agendamento.id(), updateRequest);
         assertEquals(EstadoAgendamento.REAGENDADO, agendamento.estado());
-        assertEquals(nextTuesday.atTime(10, 0), agendamento.dataHora());
+        assertEquals(LocalDate.of(2099, 8, 1).atTime(10, 0), agendamento.dataHora());
     }
 
     @Test
     void shouldTrackHistory() {
-        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest());
+        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest(14));
         agendamentoService.updateEstado(agendamento.id(), EstadoAgendamento.CONFIRMADO, "Confirmado");
         agendamentoService.updateEstado(agendamento.id(), EstadoAgendamento.COMPLETADO, "Completado");
 
@@ -132,24 +130,23 @@ class AgendamentoServiceTest extends AbstractIntegrationTest {
 
     @Test
     void shouldThrowNotFoundForInvalidCidadao() {
-        LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         AgendamentoCreateRequest request = new AgendamentoCreateRequest(
                 UUID.randomUUID(), TipoAgendamento.PASSAPORTE,
-                nextMonday.atTime(9, 0), "Test");
+                LocalDate.of(2099, 9, 1).atTime(9, 0), "Test");
 
         assertThrows(ResourceNotFoundException.class, () -> agendamentoService.create(request));
     }
 
     @Test
     void shouldDeleteAgendamento() {
-        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest());
+        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest(16));
         assertDoesNotThrow(() -> agendamentoService.delete(agendamento.id()));
         assertThrows(ResourceNotFoundException.class, () -> agendamentoService.findById(agendamento.id()));
     }
 
     @Test
     void shouldSetMotivoCancelamentoOnCancel() {
-        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest());
+        AgendamentoResponse agendamento = agendamentoService.create(passaporteRequest(17));
         agendamentoService.updateEstado(agendamento.id(), EstadoAgendamento.CONFIRMADO, "Confirmado");
 
         agendamento = agendamentoService.updateEstado(agendamento.id(), EstadoAgendamento.CANCELADO, "Motivo teste");

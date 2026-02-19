@@ -5,6 +5,7 @@ import ao.gov.embaixada.sgc.enums.EstadoAgendamento;
 import ao.gov.embaixada.sgc.enums.TipoAgendamento;
 import ao.gov.embaixada.sgc.service.AgendamentoService;
 import ao.gov.embaixada.sgc.service.AgendamentoSlotConfig;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,9 @@ class AgendamentoAuthorizationTest {
     @Autowired
     private AgendamentoSlotConfig slotConfig;
 
+    @Autowired
+    private CitizenContextService citizenContext;
+
     @TestConfiguration
     @EnableMethodSecurity
     static class TestConfig {
@@ -56,6 +60,11 @@ class AgendamentoAuthorizationTest {
         @Bean
         public AgendamentoSlotConfig agendamentoSlotConfig() {
             return mock(AgendamentoSlotConfig.class);
+        }
+
+        @Bean
+        public CitizenContextService citizenContextService() {
+            return mock(CitizenContextService.class);
         }
     }
 
