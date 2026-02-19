@@ -93,6 +93,11 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: alpha
 
+management:
+  health:
+    mail:
+      enabled: false
+
 logging:
   level:
     ao.gov.embaixada: INFO
