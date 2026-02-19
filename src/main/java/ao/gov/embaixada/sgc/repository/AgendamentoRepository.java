@@ -32,6 +32,10 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, UUID> 
             LocalDateTime start, LocalDateTime end,
             TipoAgendamento tipo, List<EstadoAgendamento> estados);
 
+    long countByCidadaoId(UUID cidadaoId);
+
+    long countByCidadaoIdAndEstado(UUID cidadaoId, EstadoAgendamento estado);
+
     long countByEstadoAndCreatedAtBetween(EstadoAgendamento estado, Instant start, Instant end);
 
     long countByTipoAndCreatedAtBetween(TipoAgendamento tipo, Instant start, Instant end);

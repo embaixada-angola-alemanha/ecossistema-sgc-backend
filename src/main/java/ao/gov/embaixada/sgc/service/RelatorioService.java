@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -39,6 +40,36 @@ public class RelatorioService {
         this.servicoNotarialRepository = servicoNotarialRepository;
         this.agendamentoRepository = agendamentoRepository;
         this.auditEventRepository = auditEventRepository;
+    }
+
+    public DashboardResumoResponse getCitizenDashboard(UUID cidadaoId) {
+        long totalVisas = visaRepository.countByCidadaoId(cidadaoId);
+        long pendingVisas = visaRepository.countByCidadaoIdAndEstado(cidadaoId, EstadoVisto.SUBMETIDO)
+                + visaRepository.countByCidadaoIdAndEstado(cidadaoId, EstadoVisto.EM_ANALISE);
+        Map<String, Long> visaPorEstado = new LinkedHashMap<>();
+        if (pendingVisas > 0) visaPorEstado.put("PENDENTES", pendingVisas);
+        ModuloResumo visas = new ModuloResumo(totalVisas, visaPorEstado, Map.of());
+
+        long totalAgendamentos = agendamentoRepository.countByCidadaoId(cidadaoId);
+        long pendingAgendamentos = agendamentoRepository.countByCidadaoIdAndEstado(cidadaoId, EstadoAgendamento.PENDENTE)
+                + agendamentoRepository.countByCidadaoIdAndEstado(cidadaoId, EstadoAgendamento.CONFIRMADO);
+        Map<String, Long> agendPorEstado = new LinkedHashMap<>();
+        if (pendingAgendamentos > 0) agendPorEstado.put("PENDENTES", pendingAgendamentos);
+        ModuloResumo agendamentos = new ModuloResumo(totalAgendamentos, agendPorEstado, Map.of());
+
+        long totalRC = registoCivilRepository.countByCidadaoId(cidadaoId);
+        ModuloResumo registosCivis = new ModuloResumo(totalRC, Map.of(), Map.of());
+
+        long totalSN = servicoNotarialRepository.countByCidadaoId(cidadaoId);
+        ModuloResumo servicosNotariais = new ModuloResumo(totalSN, Map.of(), Map.of());
+
+        long totalProcessos = processoRepository.countByCidadaoId(cidadaoId);
+        ModuloResumo processos = new ModuloResumo(totalProcessos, Map.of(), Map.of());
+
+        long totalGeral = totalVisas + totalAgendamentos + totalRC + totalSN + totalProcessos;
+
+        return new DashboardResumoResponse(visas, processos, registosCivis,
+                servicosNotariais, agendamentos, totalGeral);
     }
 
     public DashboardResumoResponse getDashboardResumo(RelatorioFilter filter) {

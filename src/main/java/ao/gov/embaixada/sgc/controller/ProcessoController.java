@@ -8,6 +8,7 @@ import ao.gov.embaixada.sgc.dto.ProcessoResponse;
 import ao.gov.embaixada.sgc.dto.ProcessoUpdateRequest;
 import ao.gov.embaixada.sgc.enums.EstadoProcesso;
 import ao.gov.embaixada.sgc.enums.TipoProcesso;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.ProcessoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,9 +31,11 @@ import java.util.UUID;
 public class ProcessoController {
 
     private final ProcessoService processoService;
+    private final CitizenContextService citizenContext;
 
-    public ProcessoController(ProcessoService processoService) {
+    public ProcessoController(ProcessoService processoService, CitizenContextService citizenContext) {
         this.processoService = processoService;
+        this.citizenContext = citizenContext;
     }
 
     @PostMapping
@@ -50,24 +54,31 @@ public class ProcessoController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Obter processo por ID", description = "Retorna os dados de um processo consular")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Processo encontrado"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Processo nao encontrado")
     })
     public ResponseEntity<ApiResponse<ProcessoResponse>> findById(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(processoService.findById(id)));
+        ProcessoResponse response = processoService.findById(id);
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(response.cidadaoId())) {
+            throw new AccessDeniedException("Access denied");
+        }
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Listar processos", description = "Lista processos com filtros opcionais por cidadao, estado e tipo")
     public ResponseEntity<ApiResponse<PagedResponse<ProcessoResponse>>> findAll(
             @RequestParam(required = false) UUID cidadaoId,
             @RequestParam(required = false) EstadoProcesso estado,
             @RequestParam(required = false) TipoProcesso tipo,
             @PageableDefault(size = 20) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            cidadaoId = citizenContext.requireCurrentCidadaoId();
+        }
         if (cidadaoId != null) {
             return ResponseEntity.ok(ApiResponse.success(
                     PagedResponse.of(processoService.findByCidadaoId(cidadaoId, pageable))));
@@ -85,10 +96,16 @@ public class ProcessoController {
     }
 
     @GetMapping("/{id}/historico")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Historico do processo", description = "Retorna o historico de transicoes de estado do processo")
     public ResponseEntity<ApiResponse<PagedResponse<ProcessoHistoricoResponse>>> findHistorico(
             @PathVariable UUID id, @PageableDefault(size = 50) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            ProcessoResponse processo = processoService.findById(id);
+            if (!citizenContext.canAccessCidadaoData(processo.cidadaoId())) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
         return ResponseEntity.ok(ApiResponse.success(
                 PagedResponse.of(processoService.findHistorico(id, pageable))));
     }

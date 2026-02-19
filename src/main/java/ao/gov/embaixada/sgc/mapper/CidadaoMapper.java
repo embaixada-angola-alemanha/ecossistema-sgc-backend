@@ -14,6 +14,7 @@ public interface CidadaoMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "estado", ignore = true)
+    @Mapping(target = "keycloakId", ignore = true)
     @Mapping(target = "documentos", ignore = true)
     @Mapping(target = "processos", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
@@ -26,6 +27,7 @@ public interface CidadaoMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "numeroPassaporte", ignore = true)
     @Mapping(target = "estado", ignore = true)
+    @Mapping(target = "keycloakId", ignore = true)
     @Mapping(target = "documentos", ignore = true)
     @Mapping(target = "processos", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

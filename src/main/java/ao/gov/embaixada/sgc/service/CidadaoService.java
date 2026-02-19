@@ -75,6 +75,14 @@ public class CidadaoService {
         return cidadaoMapper.toResponse(cidadao);
     }
 
+    public CidadaoResponse linkKeycloak(UUID id, String keycloakId) {
+        Cidadao cidadao = cidadaoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Cidadao", id));
+        cidadao.setKeycloakId(keycloakId);
+        cidadao = cidadaoRepository.save(cidadao);
+        return cidadaoMapper.toResponse(cidadao);
+    }
+
     public void delete(UUID id) {
         if (!cidadaoRepository.existsById(id)) {
             throw new ResourceNotFoundException("Cidadao", id);

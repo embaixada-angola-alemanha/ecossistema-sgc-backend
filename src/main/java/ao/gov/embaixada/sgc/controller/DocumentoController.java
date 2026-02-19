@@ -4,6 +4,7 @@ import ao.gov.embaixada.commons.dto.ApiResponse;
 import ao.gov.embaixada.commons.dto.PagedResponse;
 import ao.gov.embaixada.sgc.dto.*;
 import ao.gov.embaixada.sgc.enums.EstadoDocumento;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.DocumentoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -16,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,13 +32,21 @@ import java.util.UUID;
 public class DocumentoController {
 
     private final DocumentoService documentoService;
+    private final CitizenContextService citizenContext;
 
-    public DocumentoController(DocumentoService documentoService) {
+    public DocumentoController(DocumentoService documentoService, CitizenContextService citizenContext) {
         this.documentoService = documentoService;
+        this.citizenContext = citizenContext;
+    }
+
+    private void verifyCitizenAccess(UUID cidadaoId) {
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(cidadaoId)) {
+            throw new AccessDeniedException("Access denied");
+        }
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN')")
     @Operation(summary = "Criar documento", description = "Associa um novo documento a um cidadao")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Documento criado"),
@@ -45,13 +55,17 @@ public class DocumentoController {
     })
     public ResponseEntity<ApiResponse<DocumentoResponse>> create(
             @PathVariable UUID cidadaoId, @Valid @RequestBody DocumentoCreateRequest request) {
+        if (citizenContext.isCitizenOnly()) {
+            cidadaoId = citizenContext.requireCurrentCidadaoId();
+        }
+        verifyCitizenAccess(cidadaoId);
         DocumentoResponse response = documentoService.create(cidadaoId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Documento criado", response));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Obter documento por ID", description = "Retorna os dados de um documento especifico")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Documento encontrado"),
@@ -59,14 +73,19 @@ public class DocumentoController {
     })
     public ResponseEntity<ApiResponse<DocumentoResponse>> findById(
             @PathVariable UUID cidadaoId, @PathVariable UUID id) {
+        verifyCitizenAccess(cidadaoId);
         return ResponseEntity.ok(ApiResponse.success(documentoService.findById(id)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Listar documentos do cidadao", description = "Lista todos os documentos associados a um cidadao")
     public ResponseEntity<ApiResponse<PagedResponse<DocumentoResponse>>> findByCidadao(
             @PathVariable UUID cidadaoId, @PageableDefault(size = 20) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            cidadaoId = citizenContext.requireCurrentCidadaoId();
+        }
+        verifyCitizenAccess(cidadaoId);
         return ResponseEntity.ok(ApiResponse.success(
                 PagedResponse.of(documentoService.findByCidadaoId(cidadaoId, pageable))));
     }
@@ -107,7 +126,7 @@ public class DocumentoController {
     }
 
     @PostMapping(value = "/{id}/ficheiro", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN')")
     @Operation(summary = "Upload de ficheiro", description = "Faz upload de um ficheiro para um documento existente")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Ficheiro carregado"),
@@ -118,12 +137,16 @@ public class DocumentoController {
     public ResponseEntity<ApiResponse<DocumentoUploadResponse>> uploadFicheiro(
             @PathVariable UUID cidadaoId, @PathVariable UUID id,
             @RequestParam("file") MultipartFile file) {
+        if (citizenContext.isCitizenOnly()) {
+            cidadaoId = citizenContext.requireCurrentCidadaoId();
+        }
+        verifyCitizenAccess(cidadaoId);
         DocumentoUploadResponse response = documentoService.uploadFicheiro(cidadaoId, id, file);
         return ResponseEntity.ok(ApiResponse.success("Ficheiro carregado", response));
     }
 
     @GetMapping("/{id}/ficheiro")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Download de ficheiro", description = "Faz download do ficheiro associado a um documento")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Ficheiro retornado"),
@@ -131,6 +154,7 @@ public class DocumentoController {
     })
     public ResponseEntity<InputStreamResource> downloadFicheiro(
             @PathVariable UUID cidadaoId, @PathVariable UUID id) {
+        verifyCitizenAccess(cidadaoId);
         StorageDownloadResult result = documentoService.downloadFicheiro(id);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + result.filename() + "\"")
@@ -156,7 +180,7 @@ public class DocumentoController {
     }
 
     @GetMapping("/{id}/versoes")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Listar versoes", description = "Lista todas as versoes de um documento")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Versoes listadas"),
@@ -164,6 +188,7 @@ public class DocumentoController {
     })
     public ResponseEntity<ApiResponse<List<DocumentoVersionResponse>>> findVersions(
             @PathVariable UUID cidadaoId, @PathVariable UUID id) {
+        verifyCitizenAccess(cidadaoId);
         List<DocumentoVersionResponse> versions = documentoService.findVersions(id);
         return ResponseEntity.ok(ApiResponse.success(versions));
     }

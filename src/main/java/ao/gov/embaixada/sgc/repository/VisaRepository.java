@@ -27,6 +27,8 @@ public interface VisaRepository extends JpaRepository<VisaApplication, UUID> {
 
     long countByCidadaoId(UUID cidadaoId);
 
+    long countByCidadaoIdAndEstado(UUID cidadaoId, EstadoVisto estado);
+
     long countByEstadoAndCreatedAtBetween(EstadoVisto estado, Instant start, Instant end);
 
     long countByTipoAndCreatedAtBetween(TipoVisto tipo, Instant start, Instant end);

@@ -14,6 +14,8 @@ public interface CidadaoRepository extends JpaRepository<Cidadao, UUID>, JpaSpec
 
     Optional<Cidadao> findByNumeroPassaporte(String numeroPassaporte);
 
+    Optional<Cidadao> findByKeycloakId(String keycloakId);
+
     Page<Cidadao> findByEstado(EstadoCidadao estado, Pageable pageable);
 
     boolean existsByNumeroPassaporte(String numeroPassaporte);

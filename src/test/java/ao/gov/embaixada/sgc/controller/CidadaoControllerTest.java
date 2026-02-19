@@ -60,7 +60,7 @@ class CidadaoControllerTest {
                 id, "N1234567", "Joao Silva", LocalDate.of(1990, 1, 15),
                 Sexo.MASCULINO, "Angolana", null,
                 "joao@email.com", null, null, null,
-                EstadoCidadao.ACTIVO, 0, 0, Instant.now(), Instant.now());
+                EstadoCidadao.ACTIVO, null, 0, 0, Instant.now(), Instant.now());
 
         when(cidadaoService.create(any())).thenReturn(response);
 
@@ -85,7 +85,7 @@ class CidadaoControllerTest {
                 id, "N9999999", "Maria Santos", null,
                 Sexo.FEMININO, "Angolana", null,
                 null, null, null, null,
-                EstadoCidadao.ACTIVO, 0, 0, Instant.now(), Instant.now());
+                EstadoCidadao.ACTIVO, null, 0, 0, Instant.now(), Instant.now());
 
         when(cidadaoService.findById(id)).thenReturn(response);
 
@@ -101,7 +101,7 @@ class CidadaoControllerTest {
                 id, "N1111111", "Pedro Costa", null,
                 null, "Angolana", null,
                 null, null, null, null,
-                EstadoCidadao.ACTIVO, 0, 0, Instant.now(), Instant.now());
+                EstadoCidadao.ACTIVO, null, 0, 0, Instant.now(), Instant.now());
 
         Page<CidadaoResponse> page = new PageImpl<>(List.of(response));
         when(cidadaoService.findAll(any(), any(), any(), any(), any(Pageable.class))).thenReturn(page);
@@ -118,7 +118,7 @@ class CidadaoControllerTest {
                 id, "N2222222", "Ana Ferreira", null,
                 Sexo.FEMININO, "Angolana", null,
                 null, null, null, null,
-                EstadoCidadao.ACTIVO, 0, 0, Instant.now(), Instant.now());
+                EstadoCidadao.ACTIVO, null, 0, 0, Instant.now(), Instant.now());
 
         Page<CidadaoResponse> page = new PageImpl<>(List.of(response));
         when(cidadaoService.findAll(any(), any(), any(), any(), any(Pageable.class))).thenReturn(page);

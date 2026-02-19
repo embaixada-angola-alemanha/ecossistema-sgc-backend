@@ -8,17 +8,22 @@ import ao.gov.embaixada.sgc.dto.CidadaoUpdateRequest;
 import ao.gov.embaixada.sgc.enums.EstadoCidadao;
 import ao.gov.embaixada.sgc.enums.Sexo;
 import ao.gov.embaixada.sgc.service.CidadaoService;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,9 +33,11 @@ import java.util.UUID;
 public class CidadaoController {
 
     private final CidadaoService cidadaoService;
+    private final CitizenContextService citizenContext;
 
-    public CidadaoController(CidadaoService cidadaoService) {
+    public CidadaoController(CidadaoService cidadaoService, CitizenContextService citizenContext) {
         this.cidadaoService = cidadaoService;
+        this.citizenContext = citizenContext;
     }
 
     @PostMapping
@@ -47,19 +54,34 @@ public class CidadaoController {
                 .body(ApiResponse.success("Cidadao criado", response));
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('CITIZEN')")
+    @Operation(summary = "Obter perfil proprio", description = "Retorna o perfil do cidadao associado a conta autenticada")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Perfil encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Perfil nao associado")
+    })
+    public ResponseEntity<ApiResponse<CidadaoResponse>> getMe() {
+        UUID cidadaoId = citizenContext.requireCurrentCidadaoId();
+        return ResponseEntity.ok(ApiResponse.success(cidadaoService.findById(cidadaoId)));
+    }
+
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Obter cidadao por ID", description = "Retorna os dados de um cidadao pelo seu identificador")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Cidadao encontrado"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Cidadao nao encontrado")
     })
     public ResponseEntity<ApiResponse<CidadaoResponse>> findById(@PathVariable UUID id) {
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(id)) {
+            throw new AccessDeniedException("Access denied");
+        }
         return ResponseEntity.ok(ApiResponse.success(cidadaoService.findById(id)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Listar cidadaos", description = "Lista cidadaos com filtros opcionais por nome, estado, sexo e nacionalidade")
     public ResponseEntity<ApiResponse<PagedResponse<CidadaoResponse>>> findAll(
             @RequestParam(required = false) String search,
@@ -67,12 +89,18 @@ public class CidadaoController {
             @RequestParam(required = false) Sexo sexo,
             @RequestParam(required = false) String nacionalidade,
             @PageableDefault(size = 20) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            UUID cidadaoId = citizenContext.requireCurrentCidadaoId();
+            CidadaoResponse own = cidadaoService.findById(cidadaoId);
+            Page<CidadaoResponse> page = new PageImpl<>(List.of(own), pageable, 1);
+            return ResponseEntity.ok(ApiResponse.success(PagedResponse.of(page)));
+        }
         return ResponseEntity.ok(ApiResponse.success(
                 PagedResponse.of(cidadaoService.findAll(search, estado, sexo, nacionalidade, pageable))));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN')")
     @Operation(summary = "Actualizar cidadao", description = "Actualiza os dados pessoais de um cidadao")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Cidadao actualizado"),
@@ -80,6 +108,9 @@ public class CidadaoController {
     })
     public ResponseEntity<ApiResponse<CidadaoResponse>> update(
             @PathVariable UUID id, @Valid @RequestBody CidadaoUpdateRequest request) {
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(id)) {
+            throw new AccessDeniedException("Access denied");
+        }
         return ResponseEntity.ok(ApiResponse.success(cidadaoService.update(id, request)));
     }
 
@@ -90,6 +121,19 @@ public class CidadaoController {
             @PathVariable UUID id, @RequestBody Map<String, String> body) {
         EstadoCidadao estado = EstadoCidadao.valueOf(body.get("estado"));
         return ResponseEntity.ok(ApiResponse.success(cidadaoService.updateEstado(id, estado)));
+    }
+
+    @PatchMapping("/{id}/link")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL')")
+    @Operation(summary = "Associar conta Keycloak", description = "Associa um cidadao a uma conta Keycloak pelo keycloakId")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Conta associada"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Cidadao nao encontrado")
+    })
+    public ResponseEntity<ApiResponse<CidadaoResponse>> linkKeycloak(
+            @PathVariable UUID id, @RequestBody Map<String, String> body) {
+        String keycloakId = body.get("keycloakId");
+        return ResponseEntity.ok(ApiResponse.success(cidadaoService.linkKeycloak(id, keycloakId)));
     }
 
     @DeleteMapping("/{id}")

@@ -7,6 +7,7 @@ import ao.gov.embaixada.sgc.enums.EstadoAgendamento;
 import ao.gov.embaixada.sgc.enums.TipoAgendamento;
 import ao.gov.embaixada.sgc.service.AgendamentoService;
 import ao.gov.embaixada.sgc.service.AgendamentoSlotConfig;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +17,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,15 +34,18 @@ public class AgendamentoController {
 
     private final AgendamentoService agendamentoService;
     private final AgendamentoSlotConfig slotConfig;
+    private final CitizenContextService citizenContext;
 
     public AgendamentoController(AgendamentoService agendamentoService,
-                                  AgendamentoSlotConfig slotConfig) {
+                                  AgendamentoSlotConfig slotConfig,
+                                  CitizenContextService citizenContext) {
         this.agendamentoService = agendamentoService;
         this.slotConfig = slotConfig;
+        this.citizenContext = citizenContext;
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN')")
     @Operation(summary = "Criar agendamento", description = "Cria um novo agendamento consular verificando disponibilidade de slots")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Agendamento criado"),
@@ -50,24 +55,32 @@ public class AgendamentoController {
     })
     public ResponseEntity<ApiResponse<AgendamentoResponse>> create(
             @Valid @RequestBody AgendamentoCreateRequest request) {
+        if (citizenContext.isCitizenOnly()) {
+            UUID ownId = citizenContext.requireCurrentCidadaoId();
+            request = new AgendamentoCreateRequest(ownId, request.tipo(), request.dataHora(), request.notas());
+        }
         AgendamentoResponse response = agendamentoService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Agendamento criado", response));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Obter agendamento por ID", description = "Retorna os dados de um agendamento especifico")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Agendamento encontrado"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Agendamento nao encontrado")
     })
     public ResponseEntity<ApiResponse<AgendamentoResponse>> findById(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(agendamentoService.findById(id)));
+        AgendamentoResponse response = agendamentoService.findById(id);
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(response.cidadaoId())) {
+            throw new AccessDeniedException("Access denied");
+        }
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Listar agendamentos", description = "Lista agendamentos com filtros opcionais por cidadao, estado, tipo e intervalo de datas")
     public ResponseEntity<ApiResponse<PagedResponse<AgendamentoResponse>>> findAll(
             @RequestParam(required = false) UUID cidadaoId,
@@ -76,6 +89,9 @@ public class AgendamentoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
             @PageableDefault(size = 20) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            cidadaoId = citizenContext.requireCurrentCidadaoId();
+        }
         if (cidadaoId != null) {
             return ResponseEntity.ok(ApiResponse.success(
                     PagedResponse.of(agendamentoService.findByCidadaoId(cidadaoId, pageable))));
@@ -138,16 +154,22 @@ public class AgendamentoController {
     }
 
     @GetMapping("/{id}/historico")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Historico do agendamento", description = "Retorna o historico de transicoes de estado do agendamento")
     public ResponseEntity<ApiResponse<PagedResponse<AgendamentoHistoricoResponse>>> findHistorico(
             @PathVariable UUID id, @PageableDefault(size = 50) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            AgendamentoResponse agendamento = agendamentoService.findById(id);
+            if (!citizenContext.canAccessCidadaoData(agendamento.cidadaoId())) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
         return ResponseEntity.ok(ApiResponse.success(
                 PagedResponse.of(agendamentoService.findHistorico(id, pageable))));
     }
 
     @GetMapping("/slots")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Consultar slots disponiveis", description = "Retorna os horarios disponiveis para agendamento numa data e tipo especificos")
     public ResponseEntity<ApiResponse<List<SlotDisponivelResponse>>> getAvailableSlots(
             @RequestParam TipoAgendamento tipo,

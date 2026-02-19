@@ -10,6 +10,7 @@ import ao.gov.embaixada.sgc.dto.RegistoCivilUpdateRequest;
 import ao.gov.embaixada.sgc.enums.EstadoRegistoCivil;
 import ao.gov.embaixada.sgc.enums.TipoRegistoCivil;
 import ao.gov.embaixada.sgc.exception.ResourceNotFoundException;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.RegistoCivilService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -22,6 +23,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,15 +38,18 @@ public class RegistoCivilController {
 
     private final RegistoCivilService registoCivilService;
     private final StorageService storageService;
+    private final CitizenContextService citizenContext;
 
     public RegistoCivilController(RegistoCivilService registoCivilService,
-                                  StorageService storageService) {
+                                  StorageService storageService,
+                                  CitizenContextService citizenContext) {
         this.registoCivilService = registoCivilService;
         this.storageService = storageService;
+        this.citizenContext = citizenContext;
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN')")
     @Operation(summary = "Criar registo civil", description = "Cria um novo registo civil (nascimento, casamento ou obito)")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Registo criado"),
@@ -53,30 +58,45 @@ public class RegistoCivilController {
     })
     public ResponseEntity<ApiResponse<RegistoCivilResponse>> create(
             @Valid @RequestBody RegistoCivilCreateRequest request) {
+        if (citizenContext.isCitizenOnly()) {
+            UUID ownId = citizenContext.requireCurrentCidadaoId();
+            request = new RegistoCivilCreateRequest(ownId, request.tipo(), request.dataEvento(),
+                    request.localEvento(), request.observacoes(),
+                    request.nomePai(), request.nomeMae(), request.localNascimento(),
+                    request.nomeConjuge1(), request.nomeConjuge2(), request.regimeCasamento(),
+                    request.causaObito(), request.localObito(), request.dataObito());
+        }
         RegistoCivilResponse response = registoCivilService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Registo civil criado", response));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Obter registo civil por ID", description = "Retorna os dados de um registo civil")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Registo encontrado"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Registo nao encontrado")
     })
     public ResponseEntity<ApiResponse<RegistoCivilResponse>> findById(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(registoCivilService.findById(id)));
+        RegistoCivilResponse response = registoCivilService.findById(id);
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(response.cidadaoId())) {
+            throw new AccessDeniedException("Access denied");
+        }
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Listar registos civis", description = "Lista registos civis com filtros opcionais por cidadao, estado e tipo")
     public ResponseEntity<ApiResponse<PagedResponse<RegistoCivilResponse>>> findAll(
             @RequestParam(required = false) UUID cidadaoId,
             @RequestParam(required = false) EstadoRegistoCivil estado,
             @RequestParam(required = false) TipoRegistoCivil tipo,
             @PageableDefault(size = 20) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            cidadaoId = citizenContext.requireCurrentCidadaoId();
+        }
         if (cidadaoId != null) {
             return ResponseEntity.ok(ApiResponse.success(
                     PagedResponse.of(registoCivilService.findByCidadaoId(cidadaoId, pageable))));
@@ -133,10 +153,16 @@ public class RegistoCivilController {
     }
 
     @GetMapping("/{id}/historico")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Historico do registo civil", description = "Retorna o historico de transicoes de estado do registo")
     public ResponseEntity<ApiResponse<PagedResponse<RegistoCivilHistoricoResponse>>> findHistorico(
             @PathVariable UUID id, @PageableDefault(size = 50) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            RegistoCivilResponse registo = registoCivilService.findById(id);
+            if (!citizenContext.canAccessCidadaoData(registo.cidadaoId())) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
         return ResponseEntity.ok(ApiResponse.success(
                 PagedResponse.of(registoCivilService.findHistorico(id, pageable))));
     }
@@ -160,7 +186,7 @@ public class RegistoCivilController {
     }
 
     @GetMapping("/{id}/certificado")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Descarregar certificado", description = "Descarrega o certificado PDF do registo civil")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Certificado encontrado"),
@@ -168,12 +194,14 @@ public class RegistoCivilController {
     })
     public ResponseEntity<InputStreamResource> downloadCertificado(@PathVariable UUID id) {
         RegistoCivilResponse registo = registoCivilService.findById(id);
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(registo.cidadaoId())) {
+            throw new AccessDeniedException("Access denied");
+        }
 
         if (registo.certificadoUrl() == null) {
             throw new ResourceNotFoundException("Certificado", "registoCivil", id.toString());
         }
 
-        // Build the object key from the response data
         String objectKey = buildCertificadoObjectKey(registo);
         InputStream is = storageService.download(storageService.getDefaultBucket(), objectKey);
 

@@ -56,7 +56,7 @@ class CidadaoAuthorizationTest {
                 UUID.randomUUID(), "N1234567", "Joao Silva", LocalDate.of(1990, 1, 15),
                 Sexo.MASCULINO, "Angolana", null,
                 "joao@email.com", null, null, null,
-                EstadoCidadao.ACTIVO, 0, 0, Instant.now(), Instant.now());
+                EstadoCidadao.ACTIVO, null, 0, 0, Instant.now(), Instant.now());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package ao.gov.embaixada.sgc.controller;
 
 import ao.gov.embaixada.sgc.dto.*;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.CsvExportService;
 import ao.gov.embaixada.sgc.service.RelatorioPdfService;
 import ao.gov.embaixada.sgc.service.RelatorioService;
@@ -22,20 +23,26 @@ public class RelatorioController {
     private final RelatorioService relatorioService;
     private final CsvExportService csvExportService;
     private final RelatorioPdfService pdfService;
+    private final CitizenContextService citizenContext;
 
     public RelatorioController(RelatorioService relatorioService,
                                CsvExportService csvExportService,
-                               RelatorioPdfService pdfService) {
+                               RelatorioPdfService pdfService,
+                               CitizenContextService citizenContext) {
         this.relatorioService = relatorioService;
         this.csvExportService = csvExportService;
         this.pdfService = pdfService;
+        this.citizenContext = citizenContext;
     }
 
     @GetMapping("/dashboard")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CONSUL')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CONSUL', 'OFFICER', 'CITIZEN', 'VIEWER')")
     public DashboardResumoResponse getDashboard(
             @RequestParam(required = false) LocalDate dataInicio,
             @RequestParam(required = false) LocalDate dataFim) {
+        if (citizenContext.isCitizenOnly()) {
+            return relatorioService.getCitizenDashboard(citizenContext.requireCurrentCidadaoId());
+        }
         return relatorioService.getDashboardResumo(
                 new RelatorioFilter(dataInicio, dataFim, null, null, null));
     }

@@ -21,6 +21,7 @@ public record CidadaoResponse(
         String enderecoAngola,
         String enderecoAlemanha,
         EstadoCidadao estado,
+        String keycloakId,
         int documentoCount,
         int processoCount,
         Instant createdAt,

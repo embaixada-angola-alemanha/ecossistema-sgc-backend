@@ -11,6 +11,7 @@ import ao.gov.embaixada.sgc.dto.ServicoNotarialUpdateRequest;
 import ao.gov.embaixada.sgc.enums.EstadoServicoNotarial;
 import ao.gov.embaixada.sgc.enums.TipoServicoNotarial;
 import ao.gov.embaixada.sgc.exception.ResourceNotFoundException;
+import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.NotarialFeeCalculator;
 import ao.gov.embaixada.sgc.service.ServicoNotarialService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +25,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,17 +41,20 @@ public class ServicoNotarialController {
     private final ServicoNotarialService servicoNotarialService;
     private final NotarialFeeCalculator feeCalculator;
     private final StorageService storageService;
+    private final CitizenContextService citizenContext;
 
     public ServicoNotarialController(ServicoNotarialService servicoNotarialService,
                                      NotarialFeeCalculator feeCalculator,
-                                     StorageService storageService) {
+                                     StorageService storageService,
+                                     CitizenContextService citizenContext) {
         this.servicoNotarialService = servicoNotarialService;
         this.feeCalculator = feeCalculator;
         this.storageService = storageService;
+        this.citizenContext = citizenContext;
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN')")
     @Operation(summary = "Criar servico notarial", description = "Cria um novo pedido de servico notarial")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Servico criado"),
@@ -58,30 +63,46 @@ public class ServicoNotarialController {
     })
     public ResponseEntity<ApiResponse<ServicoNotarialResponse>> create(
             @Valid @RequestBody ServicoNotarialCreateRequest request) {
+        if (citizenContext.isCitizenOnly()) {
+            UUID ownId = citizenContext.requireCurrentCidadaoId();
+            request = new ServicoNotarialCreateRequest(ownId, request.tipo(), request.descricao(),
+                    request.observacoes(), request.agendamentoId(),
+                    request.outorgante(), request.outorgado(), request.finalidadeProcuracao(),
+                    request.documentoOrigem(), request.paisOrigem(), request.entidadeEmissora(),
+                    request.documentoApostilado(), request.paisDestino(),
+                    request.documentoOriginalRef(), request.numeroCopias());
+        }
         ServicoNotarialResponse response = servicoNotarialService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Servico notarial criado", response));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Obter servico notarial por ID", description = "Retorna os dados de um servico notarial")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Servico encontrado"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Servico nao encontrado")
     })
     public ResponseEntity<ApiResponse<ServicoNotarialResponse>> findById(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(servicoNotarialService.findById(id)));
+        ServicoNotarialResponse response = servicoNotarialService.findById(id);
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(response.cidadaoId())) {
+            throw new AccessDeniedException("Access denied");
+        }
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Listar servicos notariais", description = "Lista servicos notariais com filtros opcionais por cidadao, estado e tipo")
     public ResponseEntity<ApiResponse<PagedResponse<ServicoNotarialResponse>>> findAll(
             @RequestParam(required = false) UUID cidadaoId,
             @RequestParam(required = false) EstadoServicoNotarial estado,
             @RequestParam(required = false) TipoServicoNotarial tipo,
             @PageableDefault(size = 20) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            cidadaoId = citizenContext.requireCurrentCidadaoId();
+        }
         if (cidadaoId != null) {
             return ResponseEntity.ok(ApiResponse.success(
                     PagedResponse.of(servicoNotarialService.findByCidadaoId(cidadaoId, pageable))));
@@ -145,10 +166,16 @@ public class ServicoNotarialController {
     }
 
     @GetMapping("/{id}/historico")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Historico do servico notarial", description = "Retorna o historico de transicoes de estado do servico")
     public ResponseEntity<ApiResponse<PagedResponse<ServicoNotarialHistoricoResponse>>> findHistorico(
             @PathVariable UUID id, @PageableDefault(size = 50) Pageable pageable) {
+        if (citizenContext.isCitizenOnly()) {
+            ServicoNotarialResponse servico = servicoNotarialService.findById(id);
+            if (!citizenContext.canAccessCidadaoData(servico.cidadaoId())) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
         return ResponseEntity.ok(ApiResponse.success(
                 PagedResponse.of(servicoNotarialService.findHistorico(id, pageable))));
     }
@@ -172,7 +199,7 @@ public class ServicoNotarialController {
     }
 
     @GetMapping("/{id}/certificado")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Descarregar certificado notarial", description = "Descarrega o certificado PDF do servico notarial")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Certificado encontrado"),
@@ -180,6 +207,9 @@ public class ServicoNotarialController {
     })
     public ResponseEntity<InputStreamResource> downloadCertificado(@PathVariable UUID id) {
         ServicoNotarialResponse servico = servicoNotarialService.findById(id);
+        if (citizenContext.isCitizenOnly() && !citizenContext.canAccessCidadaoData(servico.cidadaoId())) {
+            throw new AccessDeniedException("Access denied");
+        }
 
         if (servico.certificadoUrl() == null) {
             throw new ResourceNotFoundException("Certificado", "servicoNotarial", id.toString());
@@ -203,7 +233,7 @@ public class ServicoNotarialController {
     }
 
     @GetMapping("/fees")
-    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','VIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','CONSUL','OFFICER','CITIZEN','VIEWER')")
     @Operation(summary = "Consultar taxa de servico notarial", description = "Retorna o valor da taxa para um tipo de servico notarial")
     public ResponseEntity<ApiResponse<NotarialFeeResponse>> getFee(@RequestParam TipoServicoNotarial tipo) {
         return ResponseEntity.ok(ApiResponse.success(feeCalculator.getFeeResponse(tipo)));

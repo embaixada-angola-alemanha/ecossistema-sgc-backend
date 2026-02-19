@@ -48,6 +48,9 @@ public class Cidadao extends BaseEntity {
     @Column(name = "endereco_alemanha", columnDefinition = "TEXT")
     private String enderecoAlemanha;
 
+    @Column(name = "keycloak_id")
+    private String keycloakId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private EstadoCidadao estado = EstadoCidadao.ACTIVO;
@@ -87,6 +90,9 @@ public class Cidadao extends BaseEntity {
 
     public String getEnderecoAlemanha() { return enderecoAlemanha; }
     public void setEnderecoAlemanha(String enderecoAlemanha) { this.enderecoAlemanha = enderecoAlemanha; }
+
+    public String getKeycloakId() { return keycloakId; }
+    public void setKeycloakId(String keycloakId) { this.keycloakId = keycloakId; }
 
     public EstadoCidadao getEstado() { return estado; }
     public void setEstado(EstadoCidadao estado) { this.estado = estado; }
