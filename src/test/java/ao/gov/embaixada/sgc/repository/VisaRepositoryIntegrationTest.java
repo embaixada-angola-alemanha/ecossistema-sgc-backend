@@ -7,12 +7,12 @@ import ao.gov.embaixada.sgc.enums.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -44,10 +44,10 @@ class VisaRepositoryIntegrationTest extends AbstractIntegrationTest {
         visa.setNumeroVisto(numero);
         visa.setTipo(tipo);
         visa.setEstado(estado);
-        visa.setNacionalidade("Alemã");
-        visa.setMotivo("Teste");
+        visa.setNacionalidadePassaporte("Alemã");
+        visa.setMotivoViagem("Teste");
         visa.setValorTaxa(new BigDecimal("60.00"));
-        visa.setIsento(false);
+        visa.setTaxaPaga(false);
         return visa;
     }
 
@@ -76,24 +76,24 @@ class VisaRepositoryIntegrationTest extends AbstractIntegrationTest {
         visaRepository.save(buildVisa("SGC-VIS-CID-001", TipoVisto.TURISTA, EstadoVisto.RASCUNHO));
         visaRepository.save(buildVisa("SGC-VIS-CID-002", TipoVisto.TRABALHO, EstadoVisto.SUBMETIDO));
 
-        List<VisaApplication> found = visaRepository.findByCidadaoId(cidadao.getId());
-        assertEquals(2, found.size());
+        Page<VisaApplication> found = visaRepository.findByCidadaoId(cidadao.getId(), PageRequest.of(0, 100));
+        assertEquals(2, found.getTotalElements());
     }
 
     @Test
     void shouldFindByEstado() {
         visaRepository.save(buildVisa("SGC-VIS-EST-001", TipoVisto.TURISTA, EstadoVisto.SUBMETIDO));
 
-        List<VisaApplication> found = visaRepository.findByEstado(EstadoVisto.SUBMETIDO);
-        assertTrue(found.stream().anyMatch(v -> v.getNumeroVisto().equals("SGC-VIS-EST-001")));
+        Page<VisaApplication> found = visaRepository.findByEstado(EstadoVisto.SUBMETIDO, PageRequest.of(0, 100));
+        assertTrue(found.getContent().stream().anyMatch(v -> v.getNumeroVisto().equals("SGC-VIS-EST-001")));
     }
 
     @Test
     void shouldFindByTipo() {
         visaRepository.save(buildVisa("SGC-VIS-TIPO-001", TipoVisto.DIPLOMATICO, EstadoVisto.RASCUNHO));
 
-        List<VisaApplication> found = visaRepository.findByTipo(TipoVisto.DIPLOMATICO);
-        assertTrue(found.stream().anyMatch(v -> v.getNumeroVisto().equals("SGC-VIS-TIPO-001")));
+        Page<VisaApplication> found = visaRepository.findByTipo(TipoVisto.DIPLOMATICO, PageRequest.of(0, 100));
+        assertTrue(found.getContent().stream().anyMatch(v -> v.getNumeroVisto().equals("SGC-VIS-TIPO-001")));
     }
 
     @Test

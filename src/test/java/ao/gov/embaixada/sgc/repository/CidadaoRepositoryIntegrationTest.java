@@ -6,6 +6,8 @@ import ao.gov.embaixada.sgc.enums.EstadoCidadao;
 import ao.gov.embaixada.sgc.enums.Sexo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -69,9 +71,9 @@ class CidadaoRepositoryIntegrationTest extends AbstractIntegrationTest {
     void shouldFindByEstado() {
         cidadaoRepository.save(buildCidadao("REPO-EST-" + System.nanoTime()));
 
-        var result = cidadaoRepository.findByEstado(EstadoCidadao.ACTIVO);
-        assertTrue(result.size() >= 1);
-        assertTrue(result.stream().allMatch(c -> c.getEstado() == EstadoCidadao.ACTIVO));
+        Page<Cidadao> result = cidadaoRepository.findByEstado(EstadoCidadao.ACTIVO, PageRequest.of(0, 100));
+        assertTrue(result.getTotalElements() >= 1);
+        assertTrue(result.getContent().stream().allMatch(c -> c.getEstado() == EstadoCidadao.ACTIVO));
     }
 
     @Test
