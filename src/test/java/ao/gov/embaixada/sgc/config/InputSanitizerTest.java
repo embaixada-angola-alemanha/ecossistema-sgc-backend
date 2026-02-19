@@ -1,5 +1,6 @@
 package ao.gov.embaixada.sgc.config;
 
+import ao.gov.embaixada.commons.security.filter.InputSanitizer;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

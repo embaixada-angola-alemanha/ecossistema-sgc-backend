@@ -1,19 +1,35 @@
 package ao.gov.embaixada.sgc.config;
 
+import ao.gov.embaixada.commons.security.filter.SanitizingRequestFilter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class SanitizingRequestFilterTest {
 
-    private final SanitizingRequestFilter filter = new SanitizingRequestFilter();
+    /**
+     * Test subclass that exposes the protected {@code doFilterInternal} method
+     * of {@link SanitizingRequestFilter} so it can be called from a different package.
+     */
+    static class TestableSanitizingRequestFilter extends SanitizingRequestFilter {
+
+        @Override
+        public void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                     FilterChain filterChain) throws ServletException, IOException {
+            super.doFilterInternal(request, response, filterChain);
+        }
+    }
+
+    private final TestableSanitizingRequestFilter filter = new TestableSanitizingRequestFilter();
 
     @Test
     void shouldSanitizeQueryParameters() throws ServletException, IOException {

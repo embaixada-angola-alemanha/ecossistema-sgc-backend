@@ -1,23 +1,53 @@
 package ao.gov.embaixada.sgc.config;
 
+import ao.gov.embaixada.commons.security.filter.RateLimitFilter;
+import ao.gov.embaixada.commons.security.filter.RateLimitProperties;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.io.IOException;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class RateLimitFilterTest {
 
-    private RateLimitFilter filter;
+    /**
+     * Test subclass that exposes the protected methods of {@link RateLimitFilter}
+     * so they can be called from a different package.
+     */
+    static class TestableRateLimitFilter extends RateLimitFilter {
+
+        TestableRateLimitFilter(RateLimitProperties properties) {
+            super(properties);
+        }
+
+        @Override
+        public void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                     FilterChain filterChain) throws ServletException, IOException {
+            super.doFilterInternal(request, response, filterChain);
+        }
+
+        @Override
+        public boolean shouldNotFilter(HttpServletRequest request) {
+            return super.shouldNotFilter(request);
+        }
+    }
+
+    private TestableRateLimitFilter filter;
 
     @BeforeEach
     void setUp() {
         RateLimitProperties properties = new RateLimitProperties();
         properties.setEnabled(true);
         properties.setRequestsPerMinute(5);
-        filter = new RateLimitFilter(properties);
+        filter = new TestableRateLimitFilter(properties);
     }
 
     @Test
