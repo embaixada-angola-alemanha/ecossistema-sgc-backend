@@ -3,6 +3,7 @@ package ao.gov.embaixada.sgc.controller;
 import ao.gov.embaixada.sgc.dto.CidadaoCreateRequest;
 import ao.gov.embaixada.sgc.dto.CidadaoResponse;
 import ao.gov.embaixada.sgc.enums.EstadoCidadao;
+import ao.gov.embaixada.sgc.enums.EstadoCivil;
 import ao.gov.embaixada.sgc.enums.Sexo;
 import ao.gov.embaixada.sgc.service.CidadaoService;
 import ao.gov.embaixada.sgc.service.CitizenContextService;
@@ -67,16 +68,16 @@ class CidadaoControllerTest {
         UUID id = UUID.randomUUID();
         CidadaoResponse response = new CidadaoResponse(
                 id, "N1234567", "Joao Silva", LocalDate.of(1990, 1, 15),
-                Sexo.MASCULINO, "Angolana", null,
-                "joao@email.com", null, null, null,
+                Sexo.MASCULINO, "Angolana", EstadoCivil.SOLTEIRO,
+                "joao@email.com", "+49123456789", "Luanda", "Berlin, Germany",
                 EstadoCidadao.ACTIVO, null, 0, 0, Instant.now(), Instant.now());
 
         when(cidadaoService.create(any())).thenReturn(response);
 
         CidadaoCreateRequest request = new CidadaoCreateRequest(
                 "N1234567", "Joao Silva", LocalDate.of(1990, 1, 15),
-                Sexo.MASCULINO, "Angolana", null,
-                "joao@email.com", null, null, null);
+                Sexo.MASCULINO, "Angolana", EstadoCivil.SOLTEIRO,
+                "joao@email.com", "+49123456789", "Luanda", "Berlin, Germany");
 
         mockMvc.perform(post("/api/v1/cidadaos")
                         .contentType(MediaType.APPLICATION_JSON)

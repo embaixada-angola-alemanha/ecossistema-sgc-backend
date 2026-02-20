@@ -3,6 +3,7 @@ package ao.gov.embaixada.sgc.controller;
 import ao.gov.embaixada.sgc.dto.CidadaoCreateRequest;
 import ao.gov.embaixada.sgc.dto.CidadaoResponse;
 import ao.gov.embaixada.sgc.enums.EstadoCidadao;
+import ao.gov.embaixada.sgc.enums.EstadoCivil;
 import ao.gov.embaixada.sgc.enums.Sexo;
 import ao.gov.embaixada.sgc.service.CitizenContextService;
 import ao.gov.embaixada.sgc.service.CidadaoService;
@@ -74,7 +75,8 @@ class CidadaoAuthorizationTest {
 
         CidadaoCreateRequest request = new CidadaoCreateRequest(
                 "N1234567", "Joao Silva", LocalDate.of(1990, 1, 15),
-                Sexo.MASCULINO, "Angolana", null, "joao@email.com", null, null, null);
+                Sexo.MASCULINO, "Angolana", EstadoCivil.SOLTEIRO,
+                "joao@email.com", "+49123456789", "Luanda", "Berlin, Germany");
 
         mockMvc.perform(post("/api/v1/cidadaos")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OFFICER")))
@@ -103,7 +105,9 @@ class CidadaoAuthorizationTest {
     @Test
     void viewerCannotCreateCidadao() throws Exception {
         CidadaoCreateRequest request = new CidadaoCreateRequest(
-                "N9999999", "Test User", null, null, "Angolana", null, null, null, null, null);
+                "N9999999", "Test User", LocalDate.of(1985, 3, 10),
+                Sexo.FEMININO, "Angolana", EstadoCivil.CASADO,
+                "test@email.com", null, null, "Munich, Germany");
 
         mockMvc.perform(post("/api/v1/cidadaos")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_VIEWER")))

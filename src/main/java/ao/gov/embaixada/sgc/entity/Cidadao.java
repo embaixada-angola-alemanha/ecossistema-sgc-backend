@@ -23,20 +23,21 @@ public class Cidadao extends BaseEntity {
     @Column(name = "nome_completo", nullable = false)
     private String nomeCompleto;
 
-    @Column(name = "data_nascimento")
+    @Column(name = "data_nascimento", nullable = false)
     private LocalDate dataNascimento;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 20, nullable = false)
     private Sexo sexo;
 
-    @Column(length = 100)
+    @Column(length = 100, nullable = false)
     private String nacionalidade = "Angolana";
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_civil", length = 30)
+    @Column(name = "estado_civil", length = 30, nullable = false)
     private EstadoCivil estadoCivil;
 
+    @Column(nullable = false)
     private String email;
 
     @Column(length = 50)
@@ -45,7 +46,7 @@ public class Cidadao extends BaseEntity {
     @Column(name = "endereco_angola", columnDefinition = "TEXT")
     private String enderecoAngola;
 
-    @Column(name = "endereco_alemanha", columnDefinition = "TEXT")
+    @Column(name = "endereco_alemanha", columnDefinition = "TEXT", nullable = false)
     private String enderecoAlemanha;
 
     @Column(name = "keycloak_id")
